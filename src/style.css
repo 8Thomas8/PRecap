@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Jira ticket chip, emitted by the data generator inside subject HTML */
+.ticket {
+  @apply mr-1.5 rounded bg-violet-400/10 px-1.5 py-px font-mono text-xs text-violet-400;
+}
+
+.subject code {
+  @apply font-mono text-xs;
+}
+
+/* Indeterminate loading bar (data retrieval has no measurable progress) */
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+.loading-inner {
+  animation: loading-slide 1.2s ease-in-out infinite;
+}

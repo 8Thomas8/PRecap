@@ -1,0 +1,19 @@
+# deps & build
+node_modules/
+dist/
+
+# local data — regenerated per machine, never committed (cf. README « Péremption »)
+public/data.js
+
+# editors
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# logs & secrets (none committed by design — gh carries the auth)
+*.log
+npm-debug.log*
+.env
+.env.*
