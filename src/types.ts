@@ -23,6 +23,8 @@ export interface PREntry {
   mergedBy?: string;
   /** Target branch (merged bucket only). */
   base?: string;
+  /** Source branch of the PR (headRefName), shown next to the repo name. */
+  head?: string;
   /** [badgeType, label] pairs (opened/fixup buckets). */
   badges?: [string, string][];
   /** Subject line HTML (Jira tickets parsed from the PR body). */
