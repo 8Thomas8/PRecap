@@ -86,13 +86,26 @@ const mergedInto = (base: string, repo: string, by?: string) => {
     ${merger}${t('badge.merged')} <span class="font-mono ${master ? 'text-green-400' : 'text-green-200/70'}">→ ${base}</span></span>`;
 };
 
-// Repo, shown as a prominent card header (not a badge) when several repos are mixed.
-// The org is dimmed so the repo name itself reads first.
-const repoHeader = (repo: string) => {
+// GitHub's git-branch octicon, sized to sit on the card header line.
+const branchIcon =
+  `<svg viewBox="0 0 16 16" class="h-3.5 w-3.5 shrink-0 fill-current opacity-70" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"></path></svg>`;
+
+// Card header: the repo (org dimmed, only when several repos are mixed) and the
+// PR's source branch next to it. The branch always shows; whichever part is
+// absent is simply skipped, and an empty header renders nothing.
+const cardHeader = (repo: string, head?: string) => {
   const i = repo.indexOf('/');
   const org = i >= 0 ? repo.slice(0, i + 1) : '';
   const name = i >= 0 ? repo.slice(i + 1) : repo;
-  return `<div class="mb-2 font-mono text-sm font-semibold text-zinc-100"><span class="text-zinc-500">${org}</span>${name}</div>`;
+  const repoEl = selectedRepos.size > 1
+    ? `<span class="text-zinc-100"><span class="text-zinc-500">${org}</span>${name}</span>`
+    : '';
+  const branchEl = head
+    ? `<span class="inline-flex min-w-0 max-w-full items-center gap-1 text-violet-300" title="${head}">${branchIcon}<span class="truncate">${head}</span></span>`
+    : '';
+  return repoEl || branchEl
+    ? `<div class="mb-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-sm font-semibold">${repoEl}${branchEl}</div>`
+    : '';
 };
 
 // Author of the PR, shown under the time as a bare avatar with a tooltip.
@@ -116,7 +129,7 @@ const cardHtml = (p: Entry) => `
       ${p.author ? authorAvatar(p.author, !!p.mine) : ''}
     </div>
     <div class="min-w-0 flex-1">
-      ${selectedRepos.size > 1 ? repoHeader(p.repo) : ''}
+      ${cardHeader(p.repo, p.head)}
       ${badgesHtml(p) && `<div class="mb-2 flex flex-wrap items-center gap-1.5">${badgesHtml(p)}</div>`}
       <div class="flex flex-wrap items-baseline gap-2.5">
         <a href="https://github.com/${p.repo}/pull/${p.num}" target="_blank" class="text-sm font-semibold text-sky-400 hover:underline">#${p.num}</a>

@@ -110,6 +110,11 @@ test('entriesFor: my PR opened on D', async () => {
   assert.equal(e.event, 'open');
 });
 
+test('entriesFor: source branch (headRefName) surfaced on the entry', async () => {
+  const [e] = await entriesFor(D, [pr({ headRefName: 'feature/foo', mergedAt: '2026-06-05T15:00:00Z' })], noDet, ME);
+  assert.equal(e.head, 'feature/foo');
+});
+
 test('entriesFor: my pre-existing PR pushed on D → fixup/push', async () => {
   const d = det({ 1: { commits: [commit('2026-06-05T11:00:00Z')], forcePushes: [] } });
   const [e] = await entriesFor(D, [pr({})], d, ME);

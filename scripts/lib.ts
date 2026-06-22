@@ -187,7 +187,7 @@ export async function entriesFor(day: string, prList: RawPR[], details: (num: nu
     // escaped like every other value baked into the report's HTML (defence in
     // depth - GitHub logins are charset-safe, but the escape boundary is uniform).
     const common = { num: pr.number, title: esc(pr.title), short: shortOf(pr), tickets: subject.tickets,
-      author: pr.author ? esc(pr.author.login) : undefined, mine };
+      head: esc(pr.headRefName), author: pr.author ? esc(pr.author.login) : undefined, mine };
 
     // On other people's PRs, restrict commit/force-push activity to ours.
     const ours = (d: Details) => ({
