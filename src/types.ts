@@ -19,6 +19,9 @@ export interface PREntry {
   author?: string;
   /** True when the PR is ours - the rest is an action we did on someone else's. */
   mine?: boolean;
+  /** Paris day the PR was created (YYYY-MM-DD). Absent on days captured before
+   *  this field existed - the UI degrades by hiding the age. */
+  createdDay?: string;
   /** Login of who clicked merge (merged bucket only). */
   mergedBy?: string;
   /** Target branch (merged bucket only). */

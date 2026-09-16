@@ -123,6 +123,13 @@ test('entriesFor: my PR touched on D without push → touched bucket, no dot', a
   assert.equal(e.event, null);
 });
 
+test('entriesFor: createdDay records the Paris creation day, not the reported day', async () => {
+  const d = det({ 1: { commits: [commit('2026-06-05T11:00:00Z')], forcePushes: [] } });
+  const [e] = await entriesFor(D, [pr({ createdAt: '2026-06-02T22:30:00Z' })], d, ME);
+  // 22:30 UTC on 06-02 is already 06-03 in Paris - the UI ages the PR from this.
+  assert.equal(e.createdDay, '2026-06-03');
+});
+
 test('entriesFor: PR merged before D → excluded', async () => {
   assert.equal((await entriesFor(D, [pr({ mergedAt: '2026-06-01T10:00:00Z' })], noDet, ME)).length, 0);
 });
