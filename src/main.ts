@@ -165,22 +165,42 @@ const badgesHtml = (p: Entry) => {
     : actionPill(p) + agePill(p) + tail;
 };
 
-const cardHtml = (p: Entry) => `
+// Leading ticket pill of a subject, as emitted by `ticketHtml` in scripts/lib.ts.
+// Kept in sync with it - the generator owns the markup, the front only strips it.
+const TICKET_PILL = /^<span class="ticket">([A-Z][A-Z0-9]+-\d+)<\/span>/;
+
+// Subject under the PR, minus what the header already says. On a `feature/KEY-…`
+// branch the pill only repeats the branch shown above it, so it goes; a subject
+// that was nothing but that pill disappears with it, while a Jira summary stays.
+const subjectHtml = (p: Entry, head?: string) => {
+  if (!p.subject) return '';
+  const html = head
+    ? p.subject.replace(TICKET_PILL, (pill, key: string) => head.includes(key) ? '' : pill)
+    : p.subject;
+  return html ? `<div class="subject mt-2 text-[13px] text-zinc-400">${html}</div>` : '';
+};
+
+const cardHtml = (p: Entry) => {
+  // The branch the card shows, resolved once: the merged bucket deliberately has
+  // none, and the subject needs to know what the header already stated.
+  const head = p.bucket === 'merged' ? undefined : p.head;
+  return `
   <div class="mb-2.5 flex items-start gap-4 rounded-xl border border-l-4 border-zinc-800 ${bucketOf(p.bucket).accent} bg-zinc-900 px-5 py-4 transition-colors hover:border-sky-400">
     <div class="flex flex-col items-center gap-2">
       <span class="whitespace-nowrap rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[13px] tabular-nums text-zinc-400">${p.time}</span>
       ${p.author ? authorAvatar(p.author, !!p.mine) : ''}
     </div>
     <div class="min-w-0 flex-1">
-      ${cardHeader(p.repo, p.bucket === 'merged' ? undefined : p.head)}
+      ${cardHeader(p.repo, head)}
       ${badgesHtml(p) && `<div class="mb-2 flex flex-wrap items-center gap-1.5">${badgesHtml(p)}</div>`}
       <div class="flex flex-wrap items-baseline gap-2.5">
         <a href="https://github.com/${p.repo}/pull/${p.num}" target="_blank" class="text-sm font-semibold text-sky-400 hover:underline">#${p.num}</a>
         <span class="font-mono text-[13.5px]">${p.title}</span>
       </div>
-      ${p.subject ? `<div class="subject mt-2 text-[13px] text-zinc-400">${p.subject}</div>` : ''}
+      ${subjectHtml(p, head)}
     </div>
   </div>`;
+};
 
 function statsHtml(entries: Entry[]) {
   return `<div class="mb-9 grid grid-cols-2 gap-4 sm:grid-cols-3">${BUCKETS.filter(b => b.key !== NOISE).map(b => `
