@@ -17,7 +17,7 @@ const fr = {
   'stats.touched': 'PR existantes sans code',
 
   'section.merged': 'Mergées',
-  'section.opened': 'Nouvelles PR (créées ce jour-là)',
+  'section.opened': 'Nouvelles PR',
   'section.fixup': 'PR existantes — code poussé',
   'section.touched': 'PR existantes — sans modif de code',
 
@@ -27,6 +27,11 @@ const fr = {
   'action.pushed': 'PR existante · code poussé',
   'action.rebased': 'PR existante · rebase sans nouveau code',
   'action.noCode': 'PR existante · sans code',
+
+  // Age of a PR that already existed on the reported day.
+  'age.yesterday': 'ouverte la veille',
+  'age.days': 'ouverte {n} j plus tôt',
+  'age.on': 'Ouverte le {date}',
 
   'touched.show': 'Afficher les {n} PR touchées sans modif de code',
   'touched.hide': 'Masquer les PR touchées sans modif de code',
@@ -69,7 +74,7 @@ const en: Record<Key, string> = {
   'stats.touched': 'Existing PRs, no code',
 
   'section.merged': 'Merged',
-  'section.opened': 'New PRs (created that day)',
+  'section.opened': 'New PRs',
   'section.fixup': 'Existing PRs — code pushed',
   'section.touched': 'Existing PRs — no code change',
 
@@ -77,6 +82,10 @@ const en: Record<Key, string> = {
   'action.pushed': 'existing PR · code pushed',
   'action.rebased': 'existing PR · rebased, no new code',
   'action.noCode': 'existing PR · no code',
+
+  'age.yesterday': 'opened the day before',
+  'age.days': 'opened {n}d earlier',
+  'age.on': 'Opened on {date}',
 
   'touched.show': 'Show the {n} PRs touched without code change',
   'touched.hide': 'Hide PRs touched without code change',

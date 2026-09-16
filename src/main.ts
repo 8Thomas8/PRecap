@@ -56,7 +56,7 @@ const EVENTS: Record<EventType, { dot: string; emoji: string; labelKey: Key }> =
 
 const BUCKETS: { key: Bucket; titleKey: Key; statKey: Key; icon: string; text: string; accent: string }[] = [
   { key: 'merged', titleKey: 'section.merged', statKey: 'stats.merged', icon: '✅', text: 'text-green-400', accent: 'border-l-green-400' },
-  { key: 'opened', titleKey: 'section.opened', statKey: 'stats.opened', icon: '🆕', text: 'text-sky-400', accent: 'border-l-sky-400' },
+  { key: 'opened', titleKey: 'section.opened', statKey: 'stats.opened', icon: '✨', text: 'text-sky-400', accent: 'border-l-sky-400' },
   { key: 'fixup', titleKey: 'section.fixup', statKey: 'stats.fixup', icon: '🔧', text: 'text-amber-400', accent: 'border-l-amber-400' },
   { key: 'touched', titleKey: 'section.touched', statKey: 'stats.touched', icon: '💬', text: 'text-zinc-300', accent: 'border-l-zinc-600' },
 ];
@@ -68,7 +68,7 @@ const bucketOf = (key: Bucket) => BUCKETS.find(b => b.key === key)!;
 // `merge` has no pill - the "merged → base" one below already says it.
 const ACTION: Record<EventType | 'none', { key: Key; icon: string; cls: string } | null> = {
   merge: null,
-  open: { key: 'action.created', icon: '🆕', cls: 'text-sky-300 bg-sky-400/10' },
+  open: { key: 'action.created', icon: '✨', cls: 'text-sky-300 bg-sky-400/10' },
   push: { key: 'action.pushed', icon: '🔧', cls: 'text-amber-300 bg-amber-400/10' },
   rebase: { key: 'action.rebased', icon: '🔄', cls: 'text-zinc-300 bg-zinc-400/15' },
   none: { key: 'action.noCode', icon: '💬', cls: 'text-zinc-400 bg-zinc-400/10' },
@@ -84,6 +84,8 @@ const pct = (hhmm: string) =>
 const fmtLong = (day: string) =>
   new Date(`${day}T12:00:00Z`).toLocaleDateString(locale(), { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmtShort = (day: string) => { const [, m, d] = day.split('-'); return `${d}/${m}`; };
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 864e5);
 
 // --- Renderers -------------------------------------------------------------------
 
@@ -128,6 +130,16 @@ const actionPill = (p: Entry) => {
     : '';
 };
 
+const agePill = (p: Entry) => {
+  // Absent on days captured before `createdDay` existed; same-day PRs are already
+  // labelled "new PR", so only an older one gets aged here.
+  if (!p.createdDay || p.createdDay >= selected) return '';
+  const n = daysBetween(p.createdDay, selected);
+  const label = n === 1 ? t('age.yesterday') : t('age.days', { n });
+  return `<span title="${t('age.on', { date: fmtShort(p.createdDay) })}"
+    class="whitespace-nowrap rounded-full bg-zinc-400/5 px-3 py-1 text-[13px] text-zinc-500">${label}</span>`;
+};
+
 const badgesHtml = (p: Entry) => {
   // Outside the merged bucket the action pill already states the rebase, so the
   // generator's own rebase badge would only repeat it.
@@ -135,8 +147,8 @@ const badgesHtml = (p: Entry) => {
     .filter(([variant]) => p.bucket === 'merged' || variant !== 'rebase')
     .map(badge).join('');
   return p.bucket === 'merged'
-    ? mergedInto(p.base ?? '?', p.repo, p.mergedBy) + tail
-    : actionPill(p) + tail;
+    ? mergedInto(p.base ?? '?', p.repo, p.mergedBy) + agePill(p) + tail
+    : actionPill(p) + agePill(p) + tail;
 };
 
 const cardHtml = (p: Entry) => `
