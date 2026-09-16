@@ -12,14 +12,24 @@ const fr = {
   'app.tz': 'heures Europe/Paris',
 
   'stats.merged': 'PR mergées',
-  'stats.opened': 'PR ouvertes',
-  'stats.fixup': 'Fixups',
-  'stats.touched': 'Touchées sans push',
+  'stats.opened': 'PR créées',
+  'stats.fixup': 'PR existantes modifiées',
+  'stats.touched': 'PR existantes sans code',
 
   'section.merged': 'Mergées',
-  'section.opened': 'Ouvertes',
-  'section.fixup': 'Fixups (push / rebase)',
-  'section.touched': 'Touchées sans push',
+  'section.opened': 'Nouvelles PR (créées ce jour-là)',
+  'section.fixup': 'PR existantes — code poussé',
+  'section.touched': 'PR existantes — sans modif de code',
+
+  // Action performed on the PR that day, spelled out on each card: the point is
+  // "new PR" vs "PR that already existed", which the state badge alone can't say.
+  'action.created': 'nouvelle PR',
+  'action.pushed': 'PR existante · code poussé',
+  'action.rebased': 'PR existante · rebase sans nouveau code',
+  'action.noCode': 'PR existante · sans code',
+
+  'touched.show': 'Afficher les {n} PR touchées sans modif de code',
+  'touched.hide': 'Masquer les PR touchées sans modif de code',
 
   'timeline.title': '⏱ Timeline de la journée',
   'event.merge': 'Merge',
@@ -54,14 +64,22 @@ const en: Record<Key, string> = {
   'app.tz': 'Europe/Paris time',
 
   'stats.merged': 'Merged PRs',
-  'stats.opened': 'Opened PRs',
-  'stats.fixup': 'Fixups',
-  'stats.touched': 'Touched, no push',
+  'stats.opened': 'Created PRs',
+  'stats.fixup': 'Existing PRs updated',
+  'stats.touched': 'Existing PRs, no code',
 
   'section.merged': 'Merged',
-  'section.opened': 'Opened',
-  'section.fixup': 'Fixups (push / rebase)',
-  'section.touched': 'Touched, not pushed',
+  'section.opened': 'New PRs (created that day)',
+  'section.fixup': 'Existing PRs — code pushed',
+  'section.touched': 'Existing PRs — no code change',
+
+  'action.created': 'new PR',
+  'action.pushed': 'existing PR · code pushed',
+  'action.rebased': 'existing PR · rebased, no new code',
+  'action.noCode': 'existing PR · no code',
+
+  'touched.show': 'Show the {n} PRs touched without code change',
+  'touched.hide': 'Hide PRs touched without code change',
 
   'timeline.title': '⏱ Day timeline',
   'event.merge': 'Merge',

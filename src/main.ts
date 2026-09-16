@@ -28,6 +28,12 @@ const latestActiveDay = () => {
 
 const selected = window.PR_DAY ?? latestActiveDay();
 
+// A PR we only got a comment / label / review on isn't our activity: `updatedAt`
+// moves when *anyone* touches the PR, so an old PR resurfaces in the recap
+// without us having done anything. Collapsed by default, one click away.
+let showTouched = false;
+const NOISE: Bucket = 'touched';
+
 // --- Display config ----------------------------------------------------------
 
 const BADGE: Record<string, string> = {
@@ -48,12 +54,25 @@ const EVENTS: Record<EventType, { dot: string; emoji: string; labelKey: Key }> =
   rebase: { dot: 'bg-zinc-400', emoji: '🔄', labelKey: 'event.rebase' },
 };
 
-const BUCKETS: { key: Bucket; titleKey: Key; statKey: Key; dot: string; text: string }[] = [
-  { key: 'merged', titleKey: 'section.merged', statKey: 'stats.merged', dot: 'bg-green-400', text: 'text-green-400' },
-  { key: 'opened', titleKey: 'section.opened', statKey: 'stats.opened', dot: 'bg-sky-400', text: 'text-sky-400' },
-  { key: 'fixup', titleKey: 'section.fixup', statKey: 'stats.fixup', dot: 'bg-amber-400', text: 'text-amber-400' },
-  { key: 'touched', titleKey: 'section.touched', statKey: 'stats.touched', dot: 'bg-zinc-400', text: 'text-zinc-300' },
+const BUCKETS: { key: Bucket; titleKey: Key; statKey: Key; icon: string; text: string; accent: string }[] = [
+  { key: 'merged', titleKey: 'section.merged', statKey: 'stats.merged', icon: '✅', text: 'text-green-400', accent: 'border-l-green-400' },
+  { key: 'opened', titleKey: 'section.opened', statKey: 'stats.opened', icon: '🆕', text: 'text-sky-400', accent: 'border-l-sky-400' },
+  { key: 'fixup', titleKey: 'section.fixup', statKey: 'stats.fixup', icon: '🔧', text: 'text-amber-400', accent: 'border-l-amber-400' },
+  { key: 'touched', titleKey: 'section.touched', statKey: 'stats.touched', icon: '💬', text: 'text-zinc-300', accent: 'border-l-zinc-600' },
 ];
+const bucketOf = (key: Bucket) => BUCKETS.find(b => b.key === key)!;
+
+// The day's action, spelled out on the card. Without it a PR created that day and
+// a three-day-old PR pushed to that day are indistinguishable: both carry the same
+// bare `open` state badge, and the section header is gone as soon as you scroll.
+// `merge` has no pill - the "merged → base" one below already says it.
+const ACTION: Record<EventType | 'none', { key: Key; icon: string; cls: string } | null> = {
+  merge: null,
+  open: { key: 'action.created', icon: '🆕', cls: 'text-sky-300 bg-sky-400/10' },
+  push: { key: 'action.pushed', icon: '🔧', cls: 'text-amber-300 bg-amber-400/10' },
+  rebase: { key: 'action.rebased', icon: '🔄', cls: 'text-zinc-300 bg-zinc-400/15' },
+  none: { key: 'action.noCode', icon: '💬', cls: 'text-zinc-400 bg-zinc-400/10' },
+};
 
 // --- Helpers -------------------------------------------------------------------
 
@@ -102,15 +121,26 @@ const authorAvatar = (login: string, mine: boolean) =>
     title="${t('author.openedBy')} @${login}"
     class="h-7 w-7 rounded-full ring-2 ${mine ? 'ring-zinc-700' : 'ring-amber-400/70'}">`;
 
+const actionPill = (p: Entry) => {
+  const a = ACTION[p.event ?? 'none'];
+  return a
+    ? `<span class="whitespace-nowrap rounded-full px-3.5 py-1 text-[13px] font-semibold ${a.cls}">${a.icon} ${t(a.key)}</span>`
+    : '';
+};
+
 const badgesHtml = (p: Entry) => {
-  const tail = (p.badges ?? []).map(badge).join('');
+  // Outside the merged bucket the action pill already states the rebase, so the
+  // generator's own rebase badge would only repeat it.
+  const tail = (p.badges ?? [])
+    .filter(([variant]) => p.bucket === 'merged' || variant !== 'rebase')
+    .map(badge).join('');
   return p.bucket === 'merged'
     ? mergedInto(p.base ?? '?', p.repo, p.mergedBy) + tail
-    : tail;
+    : actionPill(p) + tail;
 };
 
 const cardHtml = (p: Entry) => `
-  <div class="mb-2.5 flex items-start gap-4 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4 transition-colors hover:border-sky-400">
+  <div class="mb-2.5 flex items-start gap-4 rounded-xl border border-l-4 border-zinc-800 ${bucketOf(p.bucket).accent} bg-zinc-900 px-5 py-4 transition-colors hover:border-sky-400">
     <div class="flex flex-col items-center gap-2">
       <span class="whitespace-nowrap rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[13px] tabular-nums text-zinc-400">${p.time}</span>
       ${p.author ? authorAvatar(p.author, !!p.mine) : ''}
@@ -127,10 +157,10 @@ const cardHtml = (p: Entry) => `
   </div>`;
 
 function statsHtml(entries: Entry[]) {
-  return `<div class="mb-9 grid grid-cols-2 gap-4 sm:grid-cols-4">${BUCKETS.map(b => `
+  return `<div class="mb-9 grid grid-cols-2 gap-4 sm:grid-cols-3">${BUCKETS.filter(b => b.key !== NOISE).map(b => `
     <div class="rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4">
       <div class="text-3xl font-bold ${b.text}">${entries.filter(p => p.bucket === b.key).length}</div>
-      <div class="mt-0.5 text-[13px] text-zinc-400">${t(b.statKey)}</div>
+      <div class="mt-0.5 text-[13px] text-zinc-400">${b.icon} ${t(b.statKey)}</div>
     </div>`).join('')}</div>`;
 }
 
@@ -173,19 +203,27 @@ function timelineHtml(entries: Entry[]) {
 }
 
 function sectionsHtml(entries: Entry[]) {
-  return BUCKETS.map(b => {
+  return BUCKETS.filter(b => b.key !== NOISE || showTouched).map(b => {
     const list = entries
       .filter(p => p.bucket === b.key)
       .sort((a, b2) => b2.time.localeCompare(a.time));
     if (!list.length) return '';
     return `
       <section class="mb-9">
-        <h2 class="mb-3.5 flex items-center gap-2 text-[15px] font-semibold uppercase tracking-wider text-zinc-400">
-          <span class="inline-block h-2.5 w-2.5 rounded-full ${b.dot}"></span> ${t(b.titleKey)} (${list.length})
+        <h2 class="mb-3.5 flex items-center gap-2 text-[15px] font-semibold uppercase tracking-wider ${b.text}">
+          <span>${b.icon}</span> ${t(b.titleKey)} (${list.length})
         </h2>
         ${list.map(cardHtml).join('')}
       </section>`;
   }).join('');
+}
+
+function touchedToggleHtml(entries: Entry[]) {
+  const n = entries.filter(p => p.bucket === NOISE).length;
+  if (!n) return '';
+  return `<button data-toggle-touched
+    class="mb-9 cursor-pointer text-[13px] text-zinc-500 underline decoration-dotted underline-offset-4 transition-colors hover:text-zinc-300">
+    ${showTouched ? t('touched.hide') : t('touched.show', { n })}</button>`;
 }
 
 function controlsHtml() {
@@ -218,10 +256,11 @@ function render() {
   const entries = entriesFor(selected);
   const repoLabel = [...selectedRepos].sort().join(' · ') || knownRepos.join(' · ');
 
-  const body = entries.length
-    ? statsHtml(entries) + timelineHtml(entries) + sectionsHtml(entries)
-    : `<p class="rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-8 text-center text-zinc-400">
-        ${t('empty.noActivity', { date: fmtShort(selected) })}</p>`;
+  const body = entries.some(p => p.bucket !== NOISE)
+    ? statsHtml(entries) + timelineHtml(entries) + sectionsHtml(entries) + touchedToggleHtml(entries)
+    : `<p class="mb-5 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-8 text-center text-zinc-400">
+        ${t('empty.noActivity', { date: fmtShort(selected) })}</p>
+       ${touchedToggleHtml(entries)}${showTouched ? sectionsHtml(entries) : ''}`;
 
   document.documentElement.lang = getLang();
   document.title = `${t('app.title')} - ${fmtLong(selected)}`;
@@ -252,7 +291,12 @@ function bindControls() {
   });
 
   app.addEventListener('click', e => {
-    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-lang]');
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-toggle-touched]')) {
+      showTouched = !showTouched;
+      return render();
+    }
+    const btn = target.closest<HTMLButtonElement>('[data-lang]');
     if (!btn) return;
     setLang(btn.dataset.lang as Lang);
     render();
