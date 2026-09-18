@@ -4,6 +4,14 @@ export type EventType = 'merge' | 'open' | 'push' | 'rebase';
 /** Accepted `owner/name` repo format, shared by the UI, server and CLI. */
 export const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 
+/** A Jira ticket linked by a PR: its key and its summary (already HTML-escaped,
+ *  like every other string the generator bakes into the report). */
+export interface Subject {
+  key: string;
+  /** Jira summary, empty when the key only came from the branch name. */
+  label: string;
+}
+
 export interface PREntry {
   num: number;
   title: string;
@@ -30,7 +38,10 @@ export interface PREntry {
   head?: string;
   /** [badgeType, label] pairs (opened/fixup buckets). */
   badges?: [string, string][];
-  /** Subject line HTML (Jira tickets parsed from the PR body). */
+  /** Jira tickets of the PR, one subject line each (parsed from the body). */
+  subjects?: Subject[];
+  /** Single subject line as HTML - days captured before `subjects` existed; the
+   *  UI renders it as-is, without the branch-duplicate pill stripping. */
   subject?: string;
 }
 

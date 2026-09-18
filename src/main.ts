@@ -165,19 +165,32 @@ const badgesHtml = (p: Entry) => {
     : actionPill(p) + agePill(p) + tail;
 };
 
-// Leading ticket pill of a subject, as emitted by `ticketHtml` in scripts/lib.ts.
-// Kept in sync with it - the generator owns the markup, the front only strips it.
-const TICKET_PILL = /^<span class="ticket">([A-Z][A-Z0-9]+-\d+)<\/span>/;
+// A PR body often links the parent US *and* its sub-tasks; all of them get a
+// line. Past this many the card would drown the rest of its content (release PRs
+// list a whole sprint), so the tail is collapsed into a count.
+const MAX_SUBJECTS = 4;
 
-// Subject under the PR, minus what the header already says. On a `feature/KEY-…`
-// branch the pill only repeats the branch shown above it, so it goes; a subject
-// that was nothing but that pill disappears with it, while a Jira summary stays.
+const ticketPill = (key: string) => `<span class="ticket">${key}</span>`;
+
+// One line per Jira ticket, each led by its key - with several of them the pill
+// is what tells the lines apart, so it stays even when the branch above repeats
+// it. Only a summary-less line adds nothing over that branch, and it goes (this
+// is the `feature/KEY-…` fallback, a bare key we already show). Days captured
+// before `subjects` existed carry a single pre-rendered HTML line, shown as-is.
 const subjectHtml = (p: Entry, head?: string) => {
-  if (!p.subject) return '';
-  const html = head
-    ? p.subject.replace(TICKET_PILL, (pill, key: string) => head.includes(key) ? '' : pill)
-    : p.subject;
-  return html ? `<div class="subject mt-2 text-[13px] text-zinc-400">${html}</div>` : '';
+  const lines = p.subjects
+    ? p.subjects
+        .filter(s => s.label || !head?.includes(s.key))
+        .map(s => ticketPill(s.key) + s.label)
+    : [p.subject].filter(Boolean) as string[];
+  if (!lines.length) return '';
+
+  const extra = lines.length - MAX_SUBJECTS;
+  const shown = extra > 0
+    ? [...lines.slice(0, MAX_SUBJECTS), `<span class="text-zinc-500">${t('subject.more', { n: extra })}</span>`]
+    : lines;
+  return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${
+    shown.map(l => `<div>${l}</div>`).join('')}</div>`;
 };
 
 const cardHtml = (p: Entry) => {

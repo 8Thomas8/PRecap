@@ -108,9 +108,9 @@ Rapport bilingue. Par défaut la langue du **navigateur** ; le sélecteur **FR /
 
 ### D'où viennent les infos « Jira » ?
 
-**D'aucun appel Jira.** Le ticket affiché sous une PR est déduit de ses métadonnées GitHub. La détection est **générique** (clé `PROJ-123`, n'importe quel projet/domaine) :
+**D'aucun appel Jira.** Les tickets affichés sous une PR sont déduits de ses métadonnées GitHub. La détection est **générique** (clé `PROJ-123`, n'importe quel projet/domaine) :
 
-- **premier lien Jira du body** - `[label](https://<host>/browse/CLE)`, host quelconque - = le sujet affiché (clé + label) ;
+- **tous les liens Jira du body** - `[label](https://<host>/browse/CLE)`, host quelconque - une ligne par ticket (clé + label), dans l'ordre du body : l'US parente puis ses sous-tâches. Doublons écartés, au-delà de 4 tickets le reste est replié en `+ N autres tickets` ;
 - sinon, fallback sur une **clé de ticket dans le nom de branche** (`feature/PROJ-123-…`) ;
 - aucun ticket trouvé → **rien affiché**.
 

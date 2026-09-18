@@ -33,6 +33,9 @@ const fr = {
   'age.days': 'ouverte {n} j plus tôt',
   'age.on': 'Ouverte le {date}',
 
+  // Jira tickets listed under a PR, when the body links more than the card shows.
+  'subject.more': '+ {n} autres tickets',
+
   'touched.show': 'Afficher les {n} PR touchées sans modif de code',
   'touched.hide': 'Masquer les PR touchées sans modif de code',
 
@@ -86,6 +89,8 @@ const en: Record<Key, string> = {
   'age.yesterday': 'opened the day before',
   'age.days': 'opened {n}d earlier',
   'age.on': 'Opened on {date}',
+
+  'subject.more': '+ {n} more tickets',
 
   'touched.show': 'Show the {n} PRs touched without code change',
   'touched.hide': 'Hide PRs touched without code change',

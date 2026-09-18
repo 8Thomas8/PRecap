@@ -108,9 +108,9 @@ Bilingual report. By default the **browser** language; the **FR / EN** selector 
 
 ### Where does the «Jira» info come from?
 
-**From no Jira call.** The ticket shown under a PR is inferred from its GitHub metadata. Detection is **generic** (key `PROJ-123`, any project/host):
+**From no Jira call.** The tickets shown under a PR are inferred from its GitHub metadata. Detection is **generic** (key `PROJ-123`, any project/host):
 
-- **first Jira link in the body** - `[label](https://<host>/browse/KEY)`, any host - = the displayed subject (key + label);
+- **every Jira link in the body** - `[label](https://<host>/browse/KEY)`, any host - one line per ticket (key + label), in body order: the parent US then its sub-tasks. Duplicates dropped, and past 4 tickets the tail collapses into `+ N more tickets`;
 - otherwise, fallback to a **ticket key in the branch name** (`feature/PROJ-123-…`);
 - no ticket found → **nothing displayed**.
 
