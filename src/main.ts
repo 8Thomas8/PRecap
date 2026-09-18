@@ -172,25 +172,42 @@ const MAX_SUBJECTS = 4;
 
 const ticketPill = (key: string) => `<span class="ticket">${key}</span>`;
 
+// Indent per nesting level, as literal classes so Tailwind's scanner sees them.
+// Deeper than this reads as noise on a card, so it flattens.
+const SUBJECT_PAD = ['', 'pl-5', 'pl-9'];
+
 // One line per Jira ticket, each led by its key - with several of them the pill
 // is what tells the lines apart, so it stays even when the branch above repeats
 // it. Only a summary-less line adds nothing over that branch, and it goes (this
-// is the `feature/KEY-…` fallback, a bare key we already show). Days captured
-// before `subjects` existed carry a single pre-rendered HTML line, shown as-is.
+// is the `feature/KEY-…` fallback, a bare key we already show).
+//
+// The body's nesting is replayed here: a ticket that has sub-tasks under it is
+// the US, shown as the context it is - stepped back, with its tasks indented at
+// full contrast below. A flat list (a release PR's unrelated tickets) has no
+// parent and stays uniform, which is the honest rendering of a flat body.
+//
+// Days captured before `subjects` existed carry a single pre-rendered HTML line.
 const subjectHtml = (p: Entry, head?: string) => {
-  const lines = p.subjects
-    ? p.subjects
-        .filter(s => s.label || !head?.includes(s.key))
-        .map(s => ticketPill(s.key) + s.label)
-    : [p.subject].filter(Boolean) as string[];
-  if (!lines.length) return '';
+  if (!p.subjects) return p.subject
+    ? `<div class="subject mt-2 text-[13px] text-zinc-400">${p.subject}</div>`
+    : '';
+
+  const kept = p.subjects.filter(s => s.label || !head?.includes(s.key));
+  if (!kept.length) return '';
+
+  // Parenthood is resolved over the whole list, before the cap trims it, so a
+  // US whose tasks fall past the cut is still rendered as a US.
+  const lines = kept.map((s, i) => {
+    const depth = s.depth ?? 0;
+    const isParent = (kept[i + 1]?.depth ?? 0) > depth;
+    const cls = `${SUBJECT_PAD[Math.min(depth, SUBJECT_PAD.length - 1)]}${isParent ? ' text-zinc-500' : ''}`;
+    return `<div class="${cls}">${ticketPill(s.key)}${s.label}</div>`;
+  });
 
   const extra = lines.length - MAX_SUBJECTS;
-  const shown = extra > 0
-    ? [...lines.slice(0, MAX_SUBJECTS), `<span class="text-zinc-500">${t('subject.more', { n: extra })}</span>`]
-    : lines;
-  return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${
-    shown.map(l => `<div>${l}</div>`).join('')}</div>`;
+  if (extra > 0) lines.splice(MAX_SUBJECTS, extra,
+    `<div class="text-zinc-500">${t('subject.more', { n: extra })}</div>`);
+  return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${lines.join('')}</div>`;
 };
 
 const cardHtml = (p: Entry) => {

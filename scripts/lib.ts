@@ -131,22 +131,39 @@ const TICKET_LINK_RE = /\[([^\]]*)\]\(https?:\/\/[^)]*\/browse\/([A-Z][A-Z0-9]+-
 /**
  * Subjects shown under a PR: one per Jira ticket it links to, in body order -
  * the parent US *and* the sub-tasks listed under it, not just the first link.
+ *
+ * Nesting is read from the body's own markdown indentation, the only signal
+ * that is both generic and honest here: a sub-task sits indented under its US,
+ * while a release/develop PR lists unrelated tickets flush left and so gets no
+ * invented hierarchy - which "the first link is the parent" would have. Indent
+ * *widths* are ranked, not divided, so bodies written with two, three or four
+ * spaces per level all come out as depths 0, 1, 2…
+ *
  * Falls back to a key in the branch name when the body links nothing; no ticket
  * anywhere → no subject. Labels come out escaped, like every other value baked
  * into the report's HTML.
  */
 export function subjectsOf(pr: RawPR): Subject[] {
-  const byKey = new Map<string, string>();
-  for (const [, label, key] of (pr.body ?? '').matchAll(TICKET_LINK_RE)) {
-    // A ticket linked twice keeps its first position; a label-less link is
-    // upgraded if a later link to the same ticket carries a label.
-    if (!byKey.get(key)) byKey.set(key, esc(label.trim()));
+  const byKey = new Map<string, { label: string; indent: number }>();
+  for (const line of (pr.body ?? '').split('\n')) {
+    // Only the run before the list marker counts; a tab is worth two columns.
+    const indent = (line.match(/^[ \t]*/)?.[0] ?? '').replace(/\t/g, '  ').length;
+    for (const [, raw, key] of line.matchAll(TICKET_LINK_RE)) {
+      // A ticket linked twice keeps its first position and depth; a label-less
+      // link is upgraded if a later link to the same ticket carries a label.
+      const seen = byKey.get(key);
+      if (!seen) byKey.set(key, { label: esc(raw.trim()), indent });
+      else if (!seen.label) seen.label = esc(raw.trim());
+    }
   }
-  if (byKey.size) return [...byKey].map(([key, label]) => ({ key, label }));
+  if (byKey.size) {
+    const levels = [...new Set([...byKey.values()].map(v => v.indent))].sort((a, b) => a - b);
+    return [...byKey].map(([key, { label, indent }]) => ({ key, label, depth: levels.indexOf(indent) }));
+  }
 
   // Fallback: a ticket key in the branch name (e.g. feature/PROJ-123-foo)
   const m = pr.headRefName.match(TICKET_RE);
-  return m ? [{ key: m[0], label: '' }] : [];
+  return m ? [{ key: m[0], label: '', depth: 0 }] : [];
 }
 
 // --- Classification ----------------------------------------------------------

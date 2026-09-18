@@ -10,6 +10,10 @@ export interface Subject {
   key: string;
   /** Jira summary, empty when the key only came from the branch name. */
   label: string;
+  /** Nesting level read from the body's markdown indentation: 0 = flush left
+   *  (a US, or a standalone ticket), 1+ = listed under the line above. Absent
+   *  on days captured before nesting was tracked - the UI reads it as 0. */
+  depth?: number;
 }
 
 export interface PREntry {

@@ -110,7 +110,8 @@ Bilingual report. By default the **browser** language; the **FR / EN** selector 
 
 **From no Jira call.** The tickets shown under a PR are inferred from its GitHub metadata. Detection is **generic** (key `PROJ-123`, any project/host):
 
-- **every Jira link in the body** - `[label](https://<host>/browse/KEY)`, any host - one line per ticket (key + label), in body order: the parent US then its sub-tasks. Duplicates dropped, and past 4 tickets the tail collapses into `+ N more tickets`;
+- **every Jira link in the body** - `[label](https://<host>/browse/KEY)`, any host - one line per ticket (key + label), in body order. Duplicates dropped, and past 4 tickets the tail collapses into `+ N more tickets`;
+- **hierarchy comes from the body's markdown indentation**: a ticket indented under another renders as its sub-task (indented, at full contrast), with the parent stepped back. A flat list - typically a `develop`/release PR aggregating unrelated tickets - stays flat, with no invented hierarchy;
 - otherwise, fallback to a **ticket key in the branch name** (`feature/PROJ-123-…`);
 - no ticket found → **nothing displayed**.
 

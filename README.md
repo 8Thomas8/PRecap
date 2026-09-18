@@ -110,7 +110,8 @@ Rapport bilingue. Par défaut la langue du **navigateur** ; le sélecteur **FR /
 
 **D'aucun appel Jira.** Les tickets affichés sous une PR sont déduits de ses métadonnées GitHub. La détection est **générique** (clé `PROJ-123`, n'importe quel projet/domaine) :
 
-- **tous les liens Jira du body** - `[label](https://<host>/browse/CLE)`, host quelconque - une ligne par ticket (clé + label), dans l'ordre du body : l'US parente puis ses sous-tâches. Doublons écartés, au-delà de 4 tickets le reste est replié en `+ N autres tickets` ;
+- **tous les liens Jira du body** - `[label](https://<host>/browse/CLE)`, host quelconque - une ligne par ticket (clé + label), dans l'ordre du body. Doublons écartés, au-delà de 4 tickets le reste est replié en `+ N autres tickets` ;
+- **la hiérarchie vient de l'indentation markdown du body** : un ticket indenté sous un autre est rendu comme sa sous-tâche (décalée, en pleine intensité), le parent passant en retrait visuel. Une liste à plat - typiquement une PR `develop`/release qui agrège des tickets sans lien - reste à plat, sans hiérarchie inventée ;
 - sinon, fallback sur une **clé de ticket dans le nom de branche** (`feature/PROJ-123-…`) ;
 - aucun ticket trouvé → **rien affiché**.
 
