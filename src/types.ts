@@ -21,7 +21,6 @@ export interface PREntry {
   title: string;
   /** Short label for timeline tooltips (title without conventional-commit prefix). */
   short: string;
-  tickets: string[];
   bucket: Bucket;
   /** Paris time HH:MM of the relevant event (merge, open, push, force-push, update). */
   time: string;

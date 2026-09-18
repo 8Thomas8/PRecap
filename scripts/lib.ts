@@ -132,12 +132,11 @@ const TICKET_LINK_RE = /\[([^\]]*)\]\(https?:\/\/[^)]*\/browse\/([A-Z][A-Z0-9]+-
  * Subjects shown under a PR: one per Jira ticket it links to, in body order -
  * the parent US *and* the sub-tasks listed under it, not just the first link.
  *
- * Nesting is read from the body's own markdown indentation, the only signal
- * that is both generic and honest here: a sub-task sits indented under its US,
- * while a release/develop PR lists unrelated tickets flush left and so gets no
- * invented hierarchy - which "the first link is the parent" would have. Indent
- * *widths* are ranked, not divided, so bodies written with two, three or four
- * spaces per level all come out as depths 0, 1, 2…
+ * Nesting is read from the body's own markdown indentation, not from link order:
+ * a release/develop PR lists unrelated tickets flush left, so ranking by order
+ * would crown its first one a parent it never was. Indent *widths* are ranked
+ * rather than divided, so two-, three- or four-space bodies all resolve to
+ * depths 0, 1, 2…
  *
  * Falls back to a key in the branch name when the body links nothing; no ticket
  * anywhere → no subject. Labels come out escaped, like every other value baked
@@ -210,7 +209,7 @@ export async function entriesFor(day: string, prList: RawPR[], details: (num: nu
     // `mine` compares raw logins; the stored author/mergedBy are display-only and
     // escaped like every other value baked into the report's HTML (defence in
     // depth - GitHub logins are charset-safe, but the escape boundary is uniform).
-    const common = { num: pr.number, title: esc(pr.title), short: shortOf(pr), tickets: subjects.map(s => s.key),
+    const common = { num: pr.number, title: esc(pr.title), short: shortOf(pr),
       head: esc(pr.headRefName), author: pr.author ? esc(pr.author.login) : undefined, mine, createdDay: created };
 
     // On other people's PRs, restrict commit/force-push activity to ours.

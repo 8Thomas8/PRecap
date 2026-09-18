@@ -170,8 +170,6 @@ const badgesHtml = (p: Entry) => {
 // list a whole sprint), so the tail is collapsed into a count.
 const MAX_SUBJECTS = 4;
 
-const ticketPill = (key: string) => `<span class="ticket">${key}</span>`;
-
 // Indent per nesting level, as literal classes so Tailwind's scanner sees them.
 // Deeper than this reads as noise on a card, so it flattens.
 const SUBJECT_PAD = ['', 'pl-5', 'pl-9'];
@@ -179,14 +177,10 @@ const SUBJECT_PAD = ['', 'pl-5', 'pl-9'];
 // One line per Jira ticket, each led by its key - with several of them the pill
 // is what tells the lines apart, so it stays even when the branch above repeats
 // it. Only a summary-less line adds nothing over that branch, and it goes (this
-// is the `feature/KEY-…` fallback, a bare key we already show).
-//
-// The body's nesting is replayed here: a ticket that has sub-tasks under it is
-// the US, shown as the context it is - stepped back, with its tasks indented at
-// full contrast below. A flat list (a release PR's unrelated tickets) has no
-// parent and stays uniform, which is the honest rendering of a flat body.
-//
-// Days captured before `subjects` existed carry a single pre-rendered HTML line.
+// is the `feature/KEY-…` fallback, a bare key we already show). A ticket with
+// sub-tasks under it is the day's context rather than its work, so it steps back
+// and they get the contrast. Days captured before `subjects` existed carry a
+// single pre-rendered HTML line.
 const subjectHtml = (p: Entry, head?: string) => {
   if (!p.subjects) return p.subject
     ? `<div class="subject mt-2 text-[13px] text-zinc-400">${p.subject}</div>`
@@ -201,13 +195,13 @@ const subjectHtml = (p: Entry, head?: string) => {
     const depth = s.depth ?? 0;
     const isParent = (kept[i + 1]?.depth ?? 0) > depth;
     const cls = `${SUBJECT_PAD[Math.min(depth, SUBJECT_PAD.length - 1)]}${isParent ? ' text-zinc-500' : ''}`;
-    return `<div class="${cls}">${ticketPill(s.key)}${s.label}</div>`;
+    return `<div class="${cls}"><span class="ticket">${s.key}</span>${s.label}</div>`;
   });
 
-  const extra = lines.length - MAX_SUBJECTS;
-  if (extra > 0) lines.splice(MAX_SUBJECTS, extra,
-    `<div class="text-zinc-500">${t('subject.more', { n: extra })}</div>`);
-  return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${lines.join('')}</div>`;
+  const shown = lines.slice(0, MAX_SUBJECTS);
+  if (lines.length > MAX_SUBJECTS)
+    shown.push(`<div class="text-zinc-500">${t('subject.more', { n: lines.length - MAX_SUBJECTS })}</div>`);
+  return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${shown.join('')}</div>`;
 };
 
 const cardHtml = (p: Entry) => {
