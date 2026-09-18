@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Jira ticket chip, emitted by the data generator inside subject HTML */
+/* Jira ticket chip, one per subject line (see `subjectHtml` in main.ts) */
 .ticket {
   @apply mr-1.5 rounded bg-violet-400/10 px-1.5 py-px font-mono text-xs text-violet-400;
 }

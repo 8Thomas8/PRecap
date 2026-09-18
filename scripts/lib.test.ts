@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { subjectOf, dayPush, entriesFor, lastBusinessDay, type RawPR, type RawCommit, type Details } from './lib';
+import { subjectsOf, dayPush, entriesFor, lastBusinessDay, type RawPR, type RawCommit, type Details } from './lib';
 
 const ME = 'alice';
 const D = '2026-06-05';
@@ -24,40 +24,87 @@ const commit = (committedDate: string, authoredDate = committedDate, login = ME)
 const noDet = (_n: number): Details => ({ commits: [], forcePushes: [] });
 const det = (map: Record<number, Details>) => (n: number): Details => map[n] ?? { commits: [], forcePushes: [] };
 
-// --- subjectOf (generic Jira, no project/org hardcoded) ----------------------
+// --- subjectsOf (generic Jira, no project/org hardcoded) ---------------------
 
-test('subjectOf: Jira link in body, any host/project', () => {
-  const s = subjectOf(pr({ body: 'see [Fix login](https://acme.atlassian.net/browse/PROJ-42) ok' }));
-  assert.deepEqual(s.tickets, ['PROJ-42']);
-  assert.match(s.html, /PROJ-42/);
-  assert.match(s.html, /Fix login/);
+test('subjectsOf: Jira link in body, any host/project', () => {
+  const s = subjectsOf(pr({ body: 'see [Fix login](https://acme.atlassian.net/browse/PROJ-42) ok' }));
+  assert.deepEqual(s, [{ key: 'PROJ-42', label: 'Fix login', depth: 0 }]);
 });
 
-test('subjectOf: self-hosted Jira host also works', () => {
-  assert.deepEqual(subjectOf(pr({ body: '[x](https://jira.acme.com/browse/AB12-9)' })).tickets, ['AB12-9']);
+test('subjectsOf: self-hosted Jira host also works', () => {
+  assert.deepEqual(subjectsOf(pr({ body: '[x](https://jira.acme.com/browse/AB12-9)' })),
+    [{ key: 'AB12-9', label: 'x', depth: 0 }]);
 });
 
-test('subjectOf: fallback to a ticket key in the branch name', () => {
-  const s = subjectOf(pr({ body: null, headRefName: 'feature/PROJ-7-stuff' }));
-  assert.deepEqual(s.tickets, ['PROJ-7']);
-  assert.match(s.html, /PROJ-7/);
+test('subjectsOf: every linked ticket, in body order, sub-tasks nested by indent', () => {
+  const body = [
+    '- [parent story](https://x.atlassian.net/browse/PROJ-1)',
+    '  - [sub-task](https://x.atlassian.net/browse/PROJ-2)',
+    '  - [other sub-task](https://x.atlassian.net/browse/PROJ-3)',
+  ].join('\n');
+  assert.deepEqual(subjectsOf(pr({ body })), [
+    { key: 'PROJ-1', label: 'parent story', depth: 0 },
+    { key: 'PROJ-2', label: 'sub-task', depth: 1 },
+    { key: 'PROJ-3', label: 'other sub-task', depth: 1 },
+  ]);
 });
 
-test('subjectOf: no ticket anywhere → empty subject', () => {
-  const s = subjectOf(pr({ body: 'nothing here', headRefName: 'chore/cleanup' }));
-  assert.equal(s.html, '');
-  assert.deepEqual(s.tickets, []);
+test('subjectsOf: a flat list gets no invented hierarchy (release/develop PR)', () => {
+  const body = [
+    '- [one thing](https://x.atlassian.net/browse/PROJ-1)',
+    '- [unrelated thing](https://x.atlassian.net/browse/PROJ-2)',
+  ].join('\n');
+  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 0]);
 });
 
-test('subjectOf: body link wins over branch key', () => {
-  const s = subjectOf(pr({ body: '[a](https://x.atlassian.net/browse/AAA-1)', headRefName: 'feature/BBB-2' }));
-  assert.deepEqual(s.tickets, ['AAA-1']);
+test('subjectsOf: indent widths are ranked, not divided (4-space body, CRLF)', () => {
+  const body = [
+    '- [parent](https://x.atlassian.net/browse/PROJ-1)',
+    '    - [child](https://x.atlassian.net/browse/PROJ-2)',
+    '        - [grand-child](https://x.atlassian.net/browse/PROJ-3)',
+  ].join('\r\n');
+  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 1, 2]);
 });
 
-test('subjectOf: HTML-escapes the label', () => {
-  const s = subjectOf(pr({ body: '[<b>a&b</b>](https://x.atlassian.net/browse/ZZ-1)' }));
-  assert.ok(!s.html.includes('<b>'));
-  assert.match(s.html, /&amp;/);
+test('subjectsOf: a tab counts as two columns', () => {
+  const body = '- [parent](https://x.atlassian.net/browse/PROJ-1)\n\t- [child](https://x.atlassian.net/browse/PROJ-2)';
+  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 1]);
+});
+
+test('subjectsOf: all tickets nested under no listed parent stay at depth 0', () => {
+  const body = '  - [a](https://x.atlassian.net/browse/PROJ-1)\n  - [b](https://x.atlassian.net/browse/PROJ-2)';
+  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 0]);
+});
+
+test('subjectsOf: a ticket linked twice is kept once, at its first position', () => {
+  const body = '[a](https://x.atlassian.net/browse/PROJ-1) [b](https://x.atlassian.net/browse/PROJ-2)'
+    + ' again [a](https://x.atlassian.net/browse/PROJ-1)';
+  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.key), ['PROJ-1', 'PROJ-2']);
+});
+
+test('subjectsOf: a label-less link is upgraded by a later one carrying a label', () => {
+  const body = '[](https://x.atlassian.net/browse/PROJ-1) then [real title](https://x.atlassian.net/browse/PROJ-1)';
+  assert.deepEqual(subjectsOf(pr({ body })), [{ key: 'PROJ-1', label: 'real title', depth: 0 }]);
+});
+
+test('subjectsOf: fallback to a ticket key in the branch name', () => {
+  assert.deepEqual(subjectsOf(pr({ body: null, headRefName: 'feature/PROJ-7-stuff' })),
+    [{ key: 'PROJ-7', label: '', depth: 0 }]);
+});
+
+test('subjectsOf: no ticket anywhere \u2192 no subject', () => {
+  assert.deepEqual(subjectsOf(pr({ body: 'nothing here', headRefName: 'chore/cleanup' })), []);
+});
+
+test('subjectsOf: body links win over the branch key', () => {
+  assert.deepEqual(subjectsOf(pr({ body: '[a](https://x.atlassian.net/browse/AAA-1)', headRefName: 'feature/BBB-2' }))
+    .map(s => s.key), ['AAA-1']);
+});
+
+test('subjectsOf: HTML-escapes the label', () => {
+  const [s] = subjectsOf(pr({ body: '[<b>a&b</b>](https://x.atlassian.net/browse/ZZ-1)' }));
+  assert.ok(!s.label.includes('<b>'));
+  assert.match(s.label, /&amp;/);
 });
 
 // --- dayPush -----------------------------------------------------------------

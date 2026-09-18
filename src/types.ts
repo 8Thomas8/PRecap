@@ -4,12 +4,23 @@ export type EventType = 'merge' | 'open' | 'push' | 'rebase';
 /** Accepted `owner/name` repo format, shared by the UI, server and CLI. */
 export const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 
+/** A Jira ticket linked by a PR: its key and its summary (already HTML-escaped,
+ *  like every other string the generator bakes into the report). */
+export interface Subject {
+  key: string;
+  /** Jira summary, empty when the key only came from the branch name. */
+  label: string;
+  /** Nesting level read from the body's markdown indentation: 0 = flush left
+   *  (a US, or a standalone ticket), 1+ = listed under the line above. Absent
+   *  on days captured before nesting was tracked - the UI reads it as 0. */
+  depth?: number;
+}
+
 export interface PREntry {
   num: number;
   title: string;
   /** Short label for timeline tooltips (title without conventional-commit prefix). */
   short: string;
-  tickets: string[];
   bucket: Bucket;
   /** Paris time HH:MM of the relevant event (merge, open, push, force-push, update). */
   time: string;
@@ -30,7 +41,10 @@ export interface PREntry {
   head?: string;
   /** [badgeType, label] pairs (opened/fixup buckets). */
   badges?: [string, string][];
-  /** Subject line HTML (Jira tickets parsed from the PR body). */
+  /** Jira tickets of the PR, one subject line each (parsed from the body). */
+  subjects?: Subject[];
+  /** Single subject line as HTML - days captured before `subjects` existed; the
+   *  UI renders it as-is, without the branch-duplicate pill stripping. */
   subject?: string;
 }
 

@@ -20,7 +20,7 @@ import { promisify } from 'node:util';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { PRData, PREntry } from '../src/types';
+import type { PRData, PREntry, Subject } from '../src/types';
 
 const KEEP_DAYS = 90;
 const TZ = 'Europe/Paris';
@@ -121,25 +121,48 @@ const esc = (s: string) =>
   s.replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 
-// --- Subject (Jira ticket of the PR, if any) --------------------------------
+// --- Subjects (Jira tickets of the PR, if any) -------------------------------
 
 // Generic Jira issue key (e.g. PROJ-123, AB12-9) - no project/org hardcoded.
 const TICKET_RE = /[A-Z][A-Z0-9]+-\d+/;
-const ticketHtml = (id: string) => `<span class="ticket">${id}</span>`;
+// Every Jira link of a PR body: [label](https://<host>/browse/KEY), any host.
+const TICKET_LINK_RE = /\[([^\]]*)\]\(https?:\/\/[^)]*\/browse\/([A-Z][A-Z0-9]+-\d+)\)/g;
 
 /**
- * Subject shown under a PR: its Jira ticket, or nothing. Looks for a Jira link
- * in the body first (any host, `…/browse/KEY`), then falls back to a key in the
- * branch name. No ticket anywhere → empty subject.
+ * Subjects shown under a PR: one per Jira ticket it links to, in body order -
+ * the parent US *and* the sub-tasks listed under it, not just the first link.
+ *
+ * Nesting is read from the body's own markdown indentation, not from link order:
+ * a release/develop PR lists unrelated tickets flush left, so ranking by order
+ * would crown its first one a parent it never was. Indent *widths* are ranked
+ * rather than divided, so two-, three- or four-space bodies all resolve to
+ * depths 0, 1, 2…
+ *
+ * Falls back to a key in the branch name when the body links nothing; no ticket
+ * anywhere → no subject. Labels come out escaped, like every other value baked
+ * into the report's HTML.
  */
-export function subjectOf(pr: RawPR): { html: string; tickets: string[] } {
-  // First Jira link of the PR body: [label](https://<host>/browse/KEY)
-  const link = (pr.body ?? '').match(/\[([^\]]*)\]\(https?:\/\/[^)]*\/browse\/([A-Z][A-Z0-9]+-\d+)\)/);
-  if (link) return { html: `${ticketHtml(link[2])}${esc(link[1].trim())}`, tickets: [link[2]] };
+export function subjectsOf(pr: RawPR): Subject[] {
+  const byKey = new Map<string, { label: string; indent: number }>();
+  for (const line of (pr.body ?? '').split('\n')) {
+    // Only the run before the list marker counts; a tab is worth two columns.
+    const indent = (line.match(/^[ \t]*/)?.[0] ?? '').replace(/\t/g, '  ').length;
+    for (const [, raw, key] of line.matchAll(TICKET_LINK_RE)) {
+      // A ticket linked twice keeps its first position and depth; a label-less
+      // link is upgraded if a later link to the same ticket carries a label.
+      const seen = byKey.get(key);
+      if (!seen) byKey.set(key, { label: esc(raw.trim()), indent });
+      else if (!seen.label) seen.label = esc(raw.trim());
+    }
+  }
+  if (byKey.size) {
+    const levels = [...new Set([...byKey.values()].map(v => v.indent))].sort((a, b) => a - b);
+    return [...byKey].map(([key, { label, indent }]) => ({ key, label, depth: levels.indexOf(indent) }));
+  }
 
   // Fallback: a ticket key in the branch name (e.g. feature/PROJ-123-foo)
   const m = pr.headRefName.match(TICKET_RE);
-  return m ? { html: ticketHtml(m[0]), tickets: [m[0]] } : { html: '', tickets: [] };
+  return m ? [{ key: m[0], label: '', depth: 0 }] : [];
 }
 
 // --- Classification ----------------------------------------------------------
@@ -182,11 +205,11 @@ export async function entriesFor(day: string, prList: RawPR[], details: (num: nu
     const mine = pr.author?.login === me;
     const created = parisDay(pr.createdAt);
     const merged = pr.mergedAt ? parisDay(pr.mergedAt) : null;
-    const subject = subjectOf(pr);
+    const subjects = subjectsOf(pr);
     // `mine` compares raw logins; the stored author/mergedBy are display-only and
     // escaped like every other value baked into the report's HTML (defence in
     // depth - GitHub logins are charset-safe, but the escape boundary is uniform).
-    const common = { num: pr.number, title: esc(pr.title), short: shortOf(pr), tickets: subject.tickets,
+    const common = { num: pr.number, title: esc(pr.title), short: shortOf(pr),
       head: esc(pr.headRefName), author: pr.author ? esc(pr.author.login) : undefined, mine, createdDay: created };
 
     // On other people's PRs, restrict commit/force-push activity to ours.
@@ -214,7 +237,7 @@ export async function entriesFor(day: string, prList: RawPR[], details: (num: nu
 
     if (created === day && mine) {
       out.push({ ...common, bucket: 'opened', time: parisTime(pr.createdAt), event: 'open',
-        badges: [stateBadge(pr)], subject: subject.html });
+        badges: [stateBadge(pr)], subjects });
       continue;
     }
     if (created > day || parisDay(pr.updatedAt) < day) continue;
@@ -239,7 +262,7 @@ export async function entriesFor(day: string, prList: RawPR[], details: (num: nu
     out.push({ ...common, bucket: kind === 'nopush' ? 'touched' : 'fixup', time,
       event: kind === 'nopush' ? null : kind,
       badges: [...releaseBadges, ...kindBadge, stateBadge(pr)],
-      subject: subject.html });
+      subjects });
   }
   const order = { merged: 0, opened: 1, fixup: 2, touched: 3 };
   return out.sort((a, b) => order[a.bucket] - order[b.bucket] || b.time.localeCompare(a.time));
