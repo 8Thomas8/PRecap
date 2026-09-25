@@ -9,7 +9,7 @@ export type Lang = 'fr' | 'en';
 // exactly the same keys (enforced by the Record<Key, string> type).
 const fr = {
   'app.title': 'PRecap',
-  'app.tz': 'heures Europe/Paris',
+  'app.tz': 'fuseau horaire Europe/Paris',
 
   'stats.merged': 'PR mergées',
   'stats.opened': 'PR créées',
@@ -69,7 +69,7 @@ export type Key = keyof typeof fr;
 
 const en: Record<Key, string> = {
   'app.title': 'PRecap',
-  'app.tz': 'Europe/Paris time',
+  'app.tz': 'timezone Europe/Paris',
 
   'stats.merged': 'Merged PRs',
   'stats.opened': 'Created PRs',
