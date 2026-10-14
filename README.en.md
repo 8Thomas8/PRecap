@@ -5,6 +5,7 @@
 PRecap gives you, **with a single command**, a recap of your GitHub activity for a given day - merged / opened / fixup / touched PRs - as a web page. Everything is **local**, **AI-free** and **server-free**: it reads your PRs via the `gh` CLI and generates a self-contained HTML file you open in your browser.
 
 ![stack](https://img.shields.io/badge/stack-Vite%20%2B%20TypeScript%20%2B%20Tailwind%20v4-blue)
+![AI Assisted coding](https://img.shields.io/badge/AI_Assisted-coding-8A2BE2)
 
 > [!IMPORTANT]
 > **PRecap accesses GitHub read-only, through your `gh` - nothing else.** It only **reads** PRs/commits; it **never** writes, merges, pushes or deletes anything. No token is stored in the project: it's your `gh` (already signed in on your machine) that carries the authentication.
