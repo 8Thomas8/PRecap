@@ -107,16 +107,11 @@ Rapport bilingue. Par défaut la langue du **navigateur** ; le sélecteur **FR /
 
 > Pour itérer sur l'UI : `npm run dev` sert le bundle contre le `data.js` existant (sans `gh`, sans regénérer).
 
-### D'où viennent les infos « Jira » ?
+### Description des PR
 
-**D'aucun appel Jira.** Les tickets affichés sous une PR sont déduits de ses métadonnées GitHub. La détection est **générique** (clé `PROJ-123`, n'importe quel projet/domaine) :
+Sous chaque PR (hors section « Mergées ») s'affiche sa **description**, rendue **par GitHub lui-même** (`body_html` de l'API, même rendu GFM que sur github.com, déjà assaini par GitHub) : les liens - tickets Jira compris - restent cliquables, le reste s'affiche en texte formaté (titres, listes, cases à cocher, code…). Une description longue est repliée, avec un bouton pour la déplier. Body vide → rien affiché.
 
-- **tous les liens Jira du body** - `[label](https://<host>/browse/CLE)`, host quelconque - une ligne par ticket (clé + label), dans l'ordre du body. Doublons écartés, au-delà de 4 tickets le reste est replié en `+ N autres tickets` ;
-- **la hiérarchie vient de l'indentation markdown du body** : un ticket indenté sous un autre est rendu comme sa sous-tâche (décalée, en pleine intensité), le parent passant en retrait visuel. Une liste à plat - typiquement une PR `develop`/release qui agrège des tickets sans lien - reste à plat, sans hiérarchie inventée ;
-- sinon, fallback sur une **clé de ticket dans le nom de branche** (`feature/PROJ-123-…`) ;
-- aucun ticket trouvé → **rien affiché**.
-
-C'est une heuristique sur la convention de rédaction des PR - si le body ment, le récap ment.
+Les jours capturés avant ce changement (`--force` les recapture avec la description, dans la fenêtre de 90 jours) gardent leur ancien affichage (lignes de tickets Jira).
 
 ### Règles de classification (par jour Paris, ordre de priorité)
 
@@ -142,4 +137,4 @@ Une PR n'apparaît que dans un seul bucket.
 - La requête « PR des autres » est **bornée dans le temps** → une PR mergée par toi puis re-modifiée bien plus tard peut échapper.
 - Recherche bornée à **200 PR par requête** : pour une date très ancienne sur un repo très actif, des PR peuvent manquer.
 - « Touchée sans push » n'est fiable que pour les **jours récents** (`updatedAt` ne garde que la dernière activité).
-- Les sujets Jira reposent sur la **convention de body** décrite ci-dessus - repos sans cette convention = sujets vides ou approximatifs.
+- La description est figée au moment de la capture : une édition ultérieure du body n'apparaît qu'avec `--force`. Les pièces jointes (images, vidéos) pointent vers leur lien stable `github.com/user-attachments`, qui demande d'être connecté à GitHub sur un repo privé.

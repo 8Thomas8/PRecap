@@ -7,12 +7,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Front-end: runs in the browser.
     files: ['src/**/*.ts'],
     languageOptions: { globals: globals.browser },
   },
   {
-    // Tooling & data generation: runs under Node.
     files: ['scripts/**/*.{ts,mjs}', 'vite.config.ts'],
     languageOptions: { globals: globals.node },
   },

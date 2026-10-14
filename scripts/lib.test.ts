@@ -1,12 +1,6 @@
-/**
- * Unit tests for the pure classification logic of lib.ts (no gh, no I/O).
- * Run with: npm test  (node --import tsx --test)
- *
- * Times are asserted in Europe/Paris; June 2026 is CEST (UTC+2).
- */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { subjectsOf, dayPush, entriesFor, lastBusinessDay, type RawPR, type RawCommit, type Details } from './lib';
+import { dayPush, entriesFor, stableAttachments, lastBusinessDay, type RawPR, type RawCommit, type Details } from './lib';
 
 const ME = 'alice';
 const D = '2026-06-05';
@@ -24,90 +18,50 @@ const commit = (committedDate: string, authoredDate = committedDate, login = ME)
 const noDet = (_n: number): Details => ({ commits: [], forcePushes: [] });
 const det = (map: Record<number, Details>) => (n: number): Details => map[n] ?? { commits: [], forcePushes: [] };
 
-// --- subjectsOf (generic Jira, no project/org hardcoded) ---------------------
+const descSpy = () => {
+  const calls: number[] = [];
+  return { calls, fn: async (n: number) => { calls.push(n); return `<p>#${n}</p>`; } };
+};
 
-test('subjectsOf: Jira link in body, any host/project', () => {
-  const s = subjectsOf(pr({ body: 'see [Fix login](https://acme.atlassian.net/browse/PROJ-42) ok' }));
-  assert.deepEqual(s, [{ key: 'PROJ-42', label: 'Fix login', depth: 0 }]);
+test('description: opened, fixup and touched cards carry it, merged does not', async () => {
+  const spy = descSpy();
+  const list = [
+    pr({ number: 1, body: 'x', mergedAt: '2026-06-05T15:00:00Z' }),
+    pr({ number: 2, body: 'x', createdAt: '2026-06-05T08:00:00Z' }),
+    pr({ number: 3, body: 'x' }),
+    pr({ number: 4, body: 'x' }),
+  ];
+  const d = det({ 3: { commits: [commit('2026-06-05T12:00:00Z')], forcePushes: [] } });
+  const out = await entriesFor(D, list, d, ME, spy.fn);
+  const byNum = Object.fromEntries(out.map(e => [e.num, e]));
+  assert.equal(byNum[1].description, undefined);
+  assert.equal(byNum[2].description, '<p>#2</p>');
+  assert.equal(byNum[3].bucket, 'fixup');
+  assert.equal(byNum[3].description, '<p>#3</p>');
+  assert.equal(byNum[4].bucket, 'touched');
+  assert.equal(byNum[4].description, '<p>#4</p>');
+  assert.deepEqual(spy.calls.sort(), [2, 3, 4]);
 });
 
-test('subjectsOf: self-hosted Jira host also works', () => {
-  assert.deepEqual(subjectsOf(pr({ body: '[x](https://jira.acme.com/browse/AB12-9)' })),
-    [{ key: 'AB12-9', label: 'x', depth: 0 }]);
+test('description: a blank or null body is never fetched', async () => {
+  const spy = descSpy();
+  const out = await entriesFor(D, [
+    pr({ number: 1, body: null, createdAt: '2026-06-05T08:00:00Z' }),
+    pr({ number: 2, body: '  \n ', createdAt: '2026-06-05T09:00:00Z' }),
+  ], noDet, ME, spy.fn);
+  assert.equal(out.length, 2);
+  assert.ok(out.every(e => e.description === undefined));
+  assert.deepEqual(spy.calls, []);
 });
 
-test('subjectsOf: every linked ticket, in body order, sub-tasks nested by indent', () => {
-  const body = [
-    '- [parent story](https://x.atlassian.net/browse/PROJ-1)',
-    '  - [sub-task](https://x.atlassian.net/browse/PROJ-2)',
-    '  - [other sub-task](https://x.atlassian.net/browse/PROJ-3)',
-  ].join('\n');
-  assert.deepEqual(subjectsOf(pr({ body })), [
-    { key: 'PROJ-1', label: 'parent story', depth: 0 },
-    { key: 'PROJ-2', label: 'sub-task', depth: 1 },
-    { key: 'PROJ-3', label: 'other sub-task', depth: 1 },
-  ]);
+test('stableAttachments: signed attachment URLs become stable ones', () => {
+  const uuid = '36b555b6-b4ac-46c3-8cb8-56fb574b7c89';
+  const signed = `https://private-user-images.githubusercontent.com/47394200/672994887-${uuid}.gif?jwt=eyJ.a-b_c`;
+  const html = `<a href="${signed}"><img src="${signed}" alt="x"></a>`;
+  const stable = `https://github.com/user-attachments/assets/${uuid}`;
+  assert.equal(stableAttachments(html), `<a href="${stable}"><img src="${stable}" alt="x"></a>`);
+  assert.equal(stableAttachments('<img src="https://example.com/a.png">'), '<img src="https://example.com/a.png">');
 });
-
-test('subjectsOf: a flat list gets no invented hierarchy (release/develop PR)', () => {
-  const body = [
-    '- [one thing](https://x.atlassian.net/browse/PROJ-1)',
-    '- [unrelated thing](https://x.atlassian.net/browse/PROJ-2)',
-  ].join('\n');
-  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 0]);
-});
-
-test('subjectsOf: indent widths are ranked, not divided (4-space body, CRLF)', () => {
-  const body = [
-    '- [parent](https://x.atlassian.net/browse/PROJ-1)',
-    '    - [child](https://x.atlassian.net/browse/PROJ-2)',
-    '        - [grand-child](https://x.atlassian.net/browse/PROJ-3)',
-  ].join('\r\n');
-  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 1, 2]);
-});
-
-test('subjectsOf: a tab counts as two columns', () => {
-  const body = '- [parent](https://x.atlassian.net/browse/PROJ-1)\n\t- [child](https://x.atlassian.net/browse/PROJ-2)';
-  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 1]);
-});
-
-test('subjectsOf: all tickets nested under no listed parent stay at depth 0', () => {
-  const body = '  - [a](https://x.atlassian.net/browse/PROJ-1)\n  - [b](https://x.atlassian.net/browse/PROJ-2)';
-  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.depth), [0, 0]);
-});
-
-test('subjectsOf: a ticket linked twice is kept once, at its first position', () => {
-  const body = '[a](https://x.atlassian.net/browse/PROJ-1) [b](https://x.atlassian.net/browse/PROJ-2)'
-    + ' again [a](https://x.atlassian.net/browse/PROJ-1)';
-  assert.deepEqual(subjectsOf(pr({ body })).map(s => s.key), ['PROJ-1', 'PROJ-2']);
-});
-
-test('subjectsOf: a label-less link is upgraded by a later one carrying a label', () => {
-  const body = '[](https://x.atlassian.net/browse/PROJ-1) then [real title](https://x.atlassian.net/browse/PROJ-1)';
-  assert.deepEqual(subjectsOf(pr({ body })), [{ key: 'PROJ-1', label: 'real title', depth: 0 }]);
-});
-
-test('subjectsOf: fallback to a ticket key in the branch name', () => {
-  assert.deepEqual(subjectsOf(pr({ body: null, headRefName: 'feature/PROJ-7-stuff' })),
-    [{ key: 'PROJ-7', label: '', depth: 0 }]);
-});
-
-test('subjectsOf: no ticket anywhere \u2192 no subject', () => {
-  assert.deepEqual(subjectsOf(pr({ body: 'nothing here', headRefName: 'chore/cleanup' })), []);
-});
-
-test('subjectsOf: body links win over the branch key', () => {
-  assert.deepEqual(subjectsOf(pr({ body: '[a](https://x.atlassian.net/browse/AAA-1)', headRefName: 'feature/BBB-2' }))
-    .map(s => s.key), ['AAA-1']);
-});
-
-test('subjectsOf: HTML-escapes the label', () => {
-  const [s] = subjectsOf(pr({ body: '[<b>a&b</b>](https://x.atlassian.net/browse/ZZ-1)' }));
-  assert.ok(!s.label.includes('<b>'));
-  assert.match(s.label, /&amp;/);
-});
-
-// --- dayPush -----------------------------------------------------------------
 
 test('dayPush: commit committed & authored on D → push (Paris time)', () => {
   const r = dayPush(D, [commit('2026-06-05T12:30:00Z')], []);
@@ -133,16 +87,14 @@ test('dayPush: no activity on D → null', () => {
   assert.equal(dayPush(D, [commit('2026-06-04T12:00:00Z')], ['2026-06-03T12:00:00Z']).kind, null);
 });
 
-// --- entriesFor: my own PRs --------------------------------------------------
-
 test('entriesFor: my PR merged on D, bare merge (no content)', async () => {
   const [e] = await entriesFor(D, [pr({ mergedAt: '2026-06-05T15:00:00Z', baseRefName: 'main' })], noDet, ME);
   assert.equal(e.bucket, 'merged');
   assert.equal(e.event, 'merge');
   assert.equal(e.base, 'main');
   assert.deepEqual(e.badges, []);
-  assert.equal(e.author, ME);   // author shown on every card…
-  assert.equal(e.mine, true);   // …`mine` is what distinguishes ours
+  assert.equal(e.author, ME);
+  assert.equal(e.mine, true);
 });
 
 test('entriesFor: my PR merged on D with content → modif+merge badge', async () => {
@@ -178,15 +130,12 @@ test('entriesFor: my PR touched on D without push → touched bucket, no dot', a
 test('entriesFor: createdDay records the Paris creation day, not the reported day', async () => {
   const d = det({ 1: { commits: [commit('2026-06-05T11:00:00Z')], forcePushes: [] } });
   const [e] = await entriesFor(D, [pr({ createdAt: '2026-06-02T22:30:00Z' })], d, ME);
-  // 22:30 UTC on 06-02 is already 06-03 in Paris - the UI ages the PR from this.
   assert.equal(e.createdDay, '2026-06-03');
 });
 
 test('entriesFor: PR merged before D → excluded', async () => {
   assert.equal((await entriesFor(D, [pr({ mergedAt: '2026-06-01T10:00:00Z' })], noDet, ME)).length, 0);
 });
-
-// --- entriesFor: other people's PRs (only my actions surface) ----------------
 
 test("entriesFor: someone else's PR I merged → merged + author chip", async () => {
   const p = pr({ author: { login: 'bob' }, mergedBy: { login: ME }, mergedAt: '2026-06-05T15:00:00Z' });
@@ -227,32 +176,27 @@ test("entriesFor: a commit authored by someone else on their PR doesn't count as
   assert.equal((await entriesFor(D, [p], d, ME)).length, 0);
 });
 
-// --- entriesFor: ordering & timezone -----------------------------------------
-
 test('entriesFor: buckets ordered merged → opened → fixup → touched', async () => {
   const prs = [
-    pr({ number: 1, updatedAt: '2026-06-05T16:00:00Z' }),   // touched
-    pr({ number: 2, createdAt: '2026-06-05T08:00:00Z' }),   // opened
-    pr({ number: 3, mergedAt: '2026-06-05T15:00:00Z' }),    // merged
+    pr({ number: 1, updatedAt: '2026-06-05T16:00:00Z' }),
+    pr({ number: 2, createdAt: '2026-06-05T08:00:00Z' }),
+    pr({ number: 3, mergedAt: '2026-06-05T15:00:00Z' }),
   ];
   assert.deepEqual((await entriesFor(D, prs, noDet, ME)).map(e => e.bucket), ['merged', 'opened', 'touched']);
 });
 
 test('entriesFor: Paris/UTC boundary - 22:30Z lands on the next Paris day', async () => {
-  // 2026-06-05T22:30:00Z = 2026-06-06 00:30 in Paris (CEST)
   const p = pr({ createdAt: '2026-06-05T22:30:00Z', updatedAt: '2026-06-05T22:30:00Z' });
   assert.equal((await entriesFor('2026-06-06', [p], noDet, ME))[0]?.bucket, 'opened');
   assert.equal((await entriesFor('2026-06-05', [p], noDet, ME)).length, 0);
 });
 
-// --- lastBusinessDay (Friday if Monday, day before otherwise; skips weekends) -
-
 test('lastBusinessDay: Monday → previous Friday', () => {
-  assert.equal(lastBusinessDay('2026-06-15'), '2026-06-12'); // Mon → Fri
+  assert.equal(lastBusinessDay('2026-06-15'), '2026-06-12');
 });
 
 test('lastBusinessDay: midweek → day before', () => {
-  assert.equal(lastBusinessDay('2026-06-11'), '2026-06-10'); // Thu → Wed
+  assert.equal(lastBusinessDay('2026-06-11'), '2026-06-10');
 });
 
 test('lastBusinessDay: Saturday → Friday', () => {
