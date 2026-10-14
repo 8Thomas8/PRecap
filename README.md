@@ -5,6 +5,7 @@
 PRecap te fait, **en une commande**, un récap de ton activité GitHub d'un jour donné - PR mergées, ouvertes, fixups, PR juste touchées - sous forme d'une page web. Tout est **local**, **sans IA** et **sans serveur** : ça lit tes PR via le CLI `gh` et génère un fichier HTML autonome que tu ouvres dans ton navigateur.
 
 ![stack](https://img.shields.io/badge/stack-Vite%20%2B%20TypeScript%20%2B%20Tailwind%20v4-blue)
+![AI Assisted coding](https://img.shields.io/badge/AI_Assisted-coding-8A2BE2)
 
 > [!IMPORTANT]
 > **PRecap accède à GitHub en lecture seule, via ton `gh` - rien d'autre.** Il ne fait que **lire** des PR/commits ; il n'écrit, ne merge, ne pousse, ne supprime **jamais** rien. Aucun token n'est stocké dans le projet : c'est ton `gh` (déjà connecté sur ton poste) qui porte l'authentification.
