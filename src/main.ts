@@ -6,11 +6,6 @@ const data: PRData = window.PR_DATA ?? { generatedAt: '', repos: {} };
 
 type Entry = PREntry & { repo: string };
 
-// --- State ---------------------------------------------------------------------
-
-// Static render: the report pins its repos (window.PR_REPOS); under `npm run dev`
-// we fall back to whatever is in data.js. The checkboxes are a client-side display
-// filter only (no fetching, no persistence - all shown on each load).
 const knownRepos: string[] = (window.PR_REPOS ?? Object.keys(data.repos)).sort();
 const selectedRepos = new Set<string>(knownRepos);
 
@@ -18,8 +13,6 @@ const entriesFor = (day: string): Entry[] =>
   [...selectedRepos].flatMap(repo =>
     (data.repos[repo]?.days[day] ?? []).map(p => ({ ...p, repo })));
 
-// Day rendered is pinned by report.ts (window.PR_DAY); under `npm run dev` we
-// fall back to the most recent day with activity across all repos.
 const latestActiveDay = () => {
   const days = [...new Set(knownRepos.flatMap(r => Object.keys(data.repos[r]?.days ?? {})))];
   return days.sort().reverse().find(d => entriesFor(d).length)
@@ -28,13 +21,8 @@ const latestActiveDay = () => {
 
 const selected = window.PR_DAY ?? latestActiveDay();
 
-// A PR we only got a comment / label / review on isn't our activity: `updatedAt`
-// moves when *anyone* touches the PR, so an old PR resurfaces in the recap
-// without us having done anything. Collapsed by default, one click away.
 let showTouched = false;
 const NOISE: Bucket = 'touched';
-
-// --- Display config ----------------------------------------------------------
 
 const BADGE: Record<string, string> = {
   merged: 'text-green-400 bg-green-400/10',
@@ -62,10 +50,6 @@ const BUCKETS: { key: Bucket; titleKey: Key; statKey: Key; icon: string; text: s
 ];
 const bucketOf = (key: Bucket) => BUCKETS.find(b => b.key === key)!;
 
-// The day's action, spelled out on the card. Without it a PR created that day and
-// a three-day-old PR pushed to that day are indistinguishable: both carry the same
-// bare `open` state badge, and the section header is gone as soon as you scroll.
-// `merge` has no pill - the "merged → base" one below already says it.
 const ACTION: Record<EventType | 'none', { key: Key; icon: string; cls: string } | null> = {
   merge: null,
   open: { key: 'action.created', icon: '✨', cls: 'text-sky-300 bg-sky-400/10' },
@@ -73,8 +57,6 @@ const ACTION: Record<EventType | 'none', { key: Key; icon: string; cls: string }
   rebase: { key: 'action.rebased', icon: '🔄', cls: 'text-zinc-300 bg-zinc-400/15' },
   none: { key: 'action.noCode', icon: '💬', cls: 'text-zinc-400 bg-zinc-400/10' },
 };
-
-// --- Helpers -------------------------------------------------------------------
 
 const DAY_START = 9 * 60, DAY_END = 19 * 60;
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
@@ -87,15 +69,9 @@ const fmtShort = (day: string) => { const [, m, d] = day.split('-'); return `${d
 const daysBetween = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 864e5);
 
-// --- Renderers -------------------------------------------------------------------
-
 const badge = ([variant, key]: [string, string]) =>
   `<span class="whitespace-nowrap rounded-full px-3.5 py-1 text-[13px] font-semibold ${BADGE[variant] ?? BADGE.open}">${t(key as Key)}</span>`;
 
-// Merge result in one pill: who merged (avatar + tooltip), the "merged" label and
-// its target branch together. A merge onto a non-default branch is dimmed so it
-// stands out (the repo's real default branch is recorded by the generator;
-// fall back to master/main when it's missing, e.g. older data.js).
 const mergedInto = (base: string, repo: string, by?: string) => {
   const def = data.repos[repo]?.defaultBranch;
   const master = def ? base === def : base === 'master' || base === 'main';
@@ -107,14 +83,9 @@ const mergedInto = (base: string, repo: string, by?: string) => {
     ${merger}${t('badge.merged')} <span class="font-mono ${master ? 'text-green-400' : 'text-green-200/70'}">→ ${base}</span></span>`;
 };
 
-// GitHub's git-branch octicon, sized to sit on the card header line.
 const branchIcon =
   `<svg viewBox="0 0 16 16" class="h-3.5 w-3.5 shrink-0 fill-current opacity-70" aria-hidden="true"><path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"></path></svg>`;
 
-// Card header: the repo (org dimmed, only when several repos are mixed) and the
-// PR's source branch next to it. Whichever part is absent is simply skipped, and
-// an empty header renders nothing - the merged bucket passes no branch, as it is
-// deleted on merge and the "merged -> base" pill already names one.
 const cardHeader = (repo: string, head?: string) => {
   const i = repo.indexOf('/');
   const org = i >= 0 ? repo.slice(0, i + 1) : '';
@@ -130,8 +101,6 @@ const cardHeader = (repo: string, head?: string) => {
     : '';
 };
 
-// Author of the PR, shown under the time as a bare avatar with a tooltip.
-// Amber ring when it's someone else's (the action is still ours), neutral when it's ours.
 const authorAvatar = (login: string, mine: boolean) =>
   `<img src="https://github.com/${login}.png?size=48" alt="@${login}"
     title="${t('author.openedBy')} @${login}"
@@ -145,8 +114,6 @@ const actionPill = (p: Entry) => {
 };
 
 const agePill = (p: Entry) => {
-  // Absent on days captured before `createdDay` existed; same-day PRs are already
-  // labelled "new PR", so only an older one gets aged here.
   if (!p.createdDay || p.createdDay >= selected) return '';
   const n = daysBetween(p.createdDay, selected);
   const label = n === 1 ? t('age.yesterday') : t('age.days', { n });
@@ -155,8 +122,6 @@ const agePill = (p: Entry) => {
 };
 
 const badgesHtml = (p: Entry) => {
-  // Outside the merged bucket the action pill already states the rebase, so the
-  // generator's own rebase badge would only repeat it.
   const tail = (p.badges ?? [])
     .filter(([variant]) => p.bucket === 'merged' || variant !== 'rebase')
     .map(badge).join('');
@@ -165,22 +130,10 @@ const badgesHtml = (p: Entry) => {
     : actionPill(p) + agePill(p) + tail;
 };
 
-// A PR body often links the parent US *and* its sub-tasks; all of them get a
-// line. Past this many the card would drown the rest of its content (release PRs
-// list a whole sprint), so the tail is collapsed into a count.
 const MAX_SUBJECTS = 4;
 
-// Indent per nesting level, as literal classes so Tailwind's scanner sees them.
-// Deeper than this reads as noise on a card, so it flattens.
 const SUBJECT_PAD = ['', 'pl-5', 'pl-9'];
 
-// One line per Jira ticket, each led by its key - with several of them the pill
-// is what tells the lines apart, so it stays even when the branch above repeats
-// it. Only a summary-less line adds nothing over that branch, and it goes (this
-// is the `feature/KEY-…` fallback, a bare key we already show). A ticket with
-// sub-tasks under it is the day's context rather than its work, so it steps back
-// and they get the contrast. Days captured before `subjects` existed carry a
-// single pre-rendered HTML line.
 const subjectHtml = (p: Entry, head?: string) => {
   if (!p.subjects) return p.subject
     ? `<div class="subject mt-2 text-[13px] text-zinc-400">${p.subject}</div>`
@@ -189,8 +142,6 @@ const subjectHtml = (p: Entry, head?: string) => {
   const kept = p.subjects.filter(s => s.label || !head?.includes(s.key));
   if (!kept.length) return '';
 
-  // Parenthood is resolved over the whole list, before the cap trims it, so a
-  // US whose tasks fall past the cut is still rendered as a US.
   const lines = kept.map((s, i) => {
     const depth = s.depth ?? 0;
     const isParent = (kept[i + 1]?.depth ?? 0) > depth;
@@ -204,9 +155,20 @@ const subjectHtml = (p: Entry, head?: string) => {
   return `<div class="subject mt-2 space-y-0.5 text-[13px] text-zinc-400">${shown.join('')}</div>`;
 };
 
+const expanded = new Set<string>();
+
+const descriptionHtml = (p: Entry, head?: string) => {
+  if (!p.description) return subjectHtml(p, head);
+  const id = `${p.repo}#${p.num}`;
+  const open = expanded.has(id);
+  return `<div class="mt-2">
+    <div class="md${open ? '' : ' md-clamped'}">${p.description}</div>
+    <button data-toggle-desc="${id}" aria-expanded="${open}" class="mt-1 cursor-pointer text-xs text-zinc-500 underline decoration-dotted underline-offset-4 transition-colors hover:text-zinc-300">
+      ${open ? t('desc.less') : t('desc.more')}</button>
+  </div>`;
+};
+
 const cardHtml = (p: Entry) => {
-  // The branch the card shows, resolved once: the merged bucket deliberately has
-  // none, and the subject needs to know what the header already stated.
   const head = p.bucket === 'merged' ? undefined : p.head;
   return `
   <div class="mb-2.5 flex items-start gap-4 rounded-xl border border-l-4 border-zinc-800 ${bucketOf(p.bucket).accent} bg-zinc-900 px-5 py-4 transition-colors hover:border-sky-400">
@@ -221,7 +183,7 @@ const cardHtml = (p: Entry) => {
         <a href="https://github.com/${p.repo}/pull/${p.num}" target="_blank" class="text-sm font-semibold text-sky-400 hover:underline">#${p.num}</a>
         <span class="font-mono text-[13.5px]">${p.title}</span>
       </div>
-      ${subjectHtml(p, head)}
+      ${descriptionHtml(p, head)}
     </div>
   </div>`;
 };
@@ -297,7 +259,6 @@ function touchedToggleHtml(entries: Entry[]) {
 }
 
 function controlsHtml() {
-  // Single repo: no point showing a filter.
   const boxes = knownRepos.length > 1 ? knownRepos.map(r => `
     <label class="repo-toggle inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-1.5 font-mono text-[13px] transition-colors
       ${selectedRepos.has(r)
@@ -317,8 +278,6 @@ function controlsHtml() {
       <div class="ml-auto flex items-center gap-0.5 rounded-lg border border-zinc-800 bg-zinc-900 p-0.5">${langToggle}</div>
     </div>`;
 }
-
-// --- Page ---------------------------------------------------------------------
 
 const app = document.getElementById('app')!;
 
@@ -346,12 +305,21 @@ function render() {
         ? t('footer.generated', { date: new Date(data.generatedAt).toLocaleString(locale(), { timeZone: 'Europe/Paris' }) })
         : t('footer.none')}
     </footer>`;
+
+  for (const a of app.querySelectorAll<HTMLAnchorElement>('.md a[href]')) {
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+  }
+  for (const el of app.querySelectorAll<HTMLElement>('.md-clamped')) {
+    if (el.querySelector('img, video, details')) continue;
+    if (el.scrollHeight <= el.clientHeight + 1) {
+      el.classList.remove('md-clamped');
+      el.parentElement?.querySelector('[data-toggle-desc]')?.remove();
+    }
+  }
 }
 
-// Listeners are delegated on the stable #app once, so re-rendering its innerHTML
-// never re-attaches them (and never leaks the old ones).
 function bindControls() {
-  // Repo checkboxes: client-side display filter only (toggle visibility, no fetching).
   app.addEventListener('change', e => {
     const box = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-repo]');
     if (!box) return;
@@ -362,6 +330,17 @@ function bindControls() {
 
   app.addEventListener('click', e => {
     const target = e.target as HTMLElement;
+    const desc = target.closest<HTMLElement>('[data-toggle-desc]');
+    if (desc) {
+      const id = desc.dataset.toggleDesc!;
+      const open = !expanded.delete(id);
+      if (open) expanded.add(id);
+      desc.parentElement?.querySelector('.md')?.classList.toggle('md-clamped', !open);
+      desc.setAttribute('aria-expanded', String(open));
+      desc.textContent = open ? t('desc.less') : t('desc.more');
+      if (!open && desc.getBoundingClientRect().bottom < 0) desc.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     if (target.closest('[data-toggle-touched]')) {
       showTouched = !showTouched;
       return render();

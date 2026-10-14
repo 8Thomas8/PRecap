@@ -107,16 +107,11 @@ Bilingual report. By default the **browser** language; the **FR / EN** selector 
 
 > To iterate on the UI: `npm run dev` serves the bundle against the existing `data.js` (no `gh`, no regeneration).
 
-### Where does the «Jira» info come from?
+### PR descriptions
 
-**From no Jira call.** The tickets shown under a PR are inferred from its GitHub metadata. Detection is **generic** (key `PROJ-123`, any project/host):
+Under each PR (outside the "Merged" section) its **description** is shown, rendered **by GitHub itself** (the API's `body_html`: same GFM rendering as on github.com, already sanitized by GitHub): links - Jira tickets included - stay clickable, the rest shows as formatted text (headings, lists, checkboxes, code…). A long description is collapsed, with a button to expand it. Empty body → nothing displayed.
 
-- **every Jira link in the body** - `[label](https://<host>/browse/KEY)`, any host - one line per ticket (key + label), in body order. Duplicates dropped, and past 4 tickets the tail collapses into `+ N more tickets`;
-- **hierarchy comes from the body's markdown indentation**: a ticket indented under another renders as its sub-task (indented, at full contrast), with the parent stepped back. A flat list - typically a `develop`/release PR aggregating unrelated tickets - stays flat, with no invented hierarchy;
-- otherwise, fallback to a **ticket key in the branch name** (`feature/PROJ-123-…`);
-- no ticket found → **nothing displayed**.
-
-It's a heuristic on the PR-writing convention - if the body lies, the recap lies.
+Days captured before this change (`--force` re-captures them with the description, within the 90-day window) keep their former display (Jira ticket lines).
 
 ### Classification rules (per Paris day, priority order)
 
@@ -142,4 +137,4 @@ A PR appears in only one bucket.
 - The "other people's PRs" query is **time-bounded** → a PR merged by you then re-modified much later can slip through.
 - Search bounded to **200 PRs per query**: for a very old date on a very active repo, some PRs may be missing.
 - "Touched, not pushed" is only reliable for **recent days** (`updatedAt` only keeps the last activity).
-- Jira subjects rely on the **body convention** described above - repos without this convention = empty or approximate subjects.
+- The description is frozen at capture time: a later body edit only shows up with `--force`. Attachments (images, videos) point at their stable `github.com/user-attachments` link, which requires being signed in to GitHub on a private repo.

@@ -1,6 +1,3 @@
-// Plain JS (no deps) so it runs even on the old Node we're guarding against.
-// Wired as npm pre-hooks (predev/prebuild/prereport) to fail early
-// with a clear message instead of Vite's cryptic crypto.getRandomValues crash.
 const MIN = 20;
 const major = Number(process.versions.node.split('.')[0]);
 

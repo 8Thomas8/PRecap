@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Jira ticket chip, one per subject line (see `subjectHtml` in main.ts) */
 .ticket {
   @apply mr-1.5 rounded bg-violet-400/10 px-1.5 py-px font-mono text-xs text-violet-400;
 }
@@ -9,7 +8,6 @@
   @apply font-mono text-xs;
 }
 
-/* Indeterminate loading bar (data retrieval has no measurable progress) */
 @keyframes loading-slide {
   from { transform: translateX(-100%); }
   to { transform: translateX(400%); }
@@ -17,3 +15,41 @@
 .loading-inner {
   animation: loading-slide 1.2s ease-in-out infinite;
 }
+
+.md {
+  @apply text-[13px] leading-relaxed text-zinc-300 break-words;
+}
+.md-clamped {
+  @apply max-h-48 overflow-hidden;
+  mask-image: linear-gradient(to bottom, black 75%, transparent);
+}
+.md > :first-child { @apply mt-0; }
+.md > :last-child { @apply mb-0; }
+.md p, .md ul, .md ol, .md pre, .md blockquote, .md table, .md details { @apply my-2; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { @apply mt-3 mb-1.5 font-semibold text-zinc-100; }
+.md h1 { @apply text-base; }
+.md h2 { @apply text-[15px]; }
+.md h3, .md h4, .md h5, .md h6 { @apply text-[13px]; }
+.md a { @apply text-sky-400 hover:underline; }
+.md strong { @apply font-semibold text-zinc-100; }
+.md ul { @apply list-disc pl-5; }
+.md ol { @apply list-decimal pl-5; }
+.md ul ul { list-style-type: circle; }
+.md ul ul ul { list-style-type: square; }
+.md ol ol { list-style-type: lower-roman; }
+.md ol ol ol { list-style-type: lower-alpha; }
+.md li > ul, .md li > ol { @apply my-0.5; }
+.md li.task-list-item { @apply list-none; }
+.md ul.contains-task-list { @apply pl-1; }
+.md input[type="checkbox"] { @apply mr-1.5 align-middle accent-sky-400; }
+.md code, .md tt { @apply rounded bg-zinc-800 px-1 py-px font-mono text-xs; }
+.md pre { @apply overflow-x-auto rounded-md bg-zinc-950 p-3; }
+.md pre code { @apply bg-transparent p-0; }
+.md blockquote { @apply border-l-2 border-zinc-700 pl-3 text-zinc-400; }
+.md hr { @apply my-3 border-zinc-800; }
+.md img, .md video { @apply inline max-w-full; }
+.md svg { @apply inline fill-current align-text-bottom; }
+.md table { @apply block overflow-x-auto border-collapse; }
+.md th, .md td { @apply border border-zinc-800 px-2 py-1; }
+.md th { @apply font-semibold text-zinc-100; }
+.md details summary { @apply cursor-pointer text-zinc-400; }
