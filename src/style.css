@@ -17,3 +17,31 @@
 .loading-inner {
   animation: loading-slide 1.2s ease-in-out infinite;
 }
+
+body {
+  background-image: radial-gradient(60rem 24rem at 50% -8rem, rgb(74 222 128 / 0.06), transparent);
+  background-repeat: no-repeat;
+}
+
+@keyframes tooltip-in {
+  from { opacity: 0; }
+}
+.tooltip {
+  animation: tooltip-in 120ms ease-out;
+}
+
+.title-tip {
+  opacity: 0;
+  translate: 0 4px;
+  pointer-events: none;
+  transition: opacity 150ms ease, translate 150ms ease;
+}
+.group:is(:hover, :has(a:focus-visible)) .pr-title[data-clipped] + .title-tip {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { animation: none; }
+  .title-tip { transition: none; }
+}

@@ -10,6 +10,7 @@ export type Lang = 'fr' | 'en';
 const fr = {
   'app.title': 'PRecap',
   'app.tz': 'fuseau horaire Europe/Paris',
+  'app.lang': 'Langue',
 
   'stats.merged': 'PR mergées',
   'stats.opened': 'PR créées',
@@ -21,12 +22,7 @@ const fr = {
   'section.fixup': 'PR existantes — code poussé',
   'section.touched': 'PR existantes — sans modif de code',
 
-  // Action performed on the PR that day, spelled out on each card: the point is
-  // "new PR" vs "PR that already existed", which the state badge alone can't say.
-  'action.created': 'nouvelle PR',
-  'action.pushed': 'PR existante · code poussé',
-  'action.rebased': 'PR existante · rebase sans nouveau code',
-  'action.noCode': 'PR existante · sans code',
+  'action.rebased': 'rebase sans nouveau code',
 
   // Age of a PR that already existed on the reported day.
   'age.yesterday': 'ouverte la veille',
@@ -41,7 +37,7 @@ const fr = {
 
   'rebases.toggle': 'Afficher les rebases ({n})',
 
-  'timeline.title': '⏱ Timeline de la journée',
+  'timeline.title': 'Timeline de la journée',
   'event.merge': 'Merge',
   'event.open': 'Ouverture',
   'event.push': 'Push',
@@ -72,6 +68,7 @@ export type Key = keyof typeof fr;
 const en: Record<Key, string> = {
   'app.title': 'PRecap',
   'app.tz': 'timezone Europe/Paris',
+  'app.lang': 'Language',
 
   'stats.merged': 'Merged PRs',
   'stats.opened': 'Created PRs',
@@ -83,10 +80,7 @@ const en: Record<Key, string> = {
   'section.fixup': 'Existing PRs — code pushed',
   'section.touched': 'Existing PRs — no code change',
 
-  'action.created': 'new PR',
-  'action.pushed': 'existing PR · code pushed',
-  'action.rebased': 'existing PR · rebased, no new code',
-  'action.noCode': 'existing PR · no code',
+  'action.rebased': 'rebased, no new code',
 
   'age.yesterday': 'opened the day before',
   'age.days': 'opened {n}d earlier',
@@ -99,7 +93,7 @@ const en: Record<Key, string> = {
 
   'rebases.toggle': 'Show rebases ({n})',
 
-  'timeline.title': '⏱ Day timeline',
+  'timeline.title': 'Day timeline',
   'event.merge': 'Merge',
   'event.open': 'Opened',
   'event.push': 'Push',
