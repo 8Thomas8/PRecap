@@ -39,6 +39,8 @@ const fr = {
   'touched.show': 'Afficher les {n} PR touchées sans modif de code',
   'touched.hide': 'Masquer les PR touchées sans modif de code',
 
+  'rebases.toggle': 'Afficher les rebases ({n})',
+
   'timeline.title': '⏱ Timeline de la journée',
   'event.merge': 'Merge',
   'event.open': 'Ouverture',
@@ -94,6 +96,8 @@ const en: Record<Key, string> = {
 
   'touched.show': 'Show the {n} PRs touched without code change',
   'touched.hide': 'Hide PRs touched without code change',
+
+  'rebases.toggle': 'Show rebases ({n})',
 
   'timeline.title': '⏱ Day timeline',
   'event.merge': 'Merge',

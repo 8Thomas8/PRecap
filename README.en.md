@@ -57,7 +57,7 @@ npm run report -- --repos acme/web 2026-06-10
 
 - **The report is frozen**: a day already generated is not recomputed (unless `--force`). No need to re-generate a day you've already done.
 - **If something's off** (misspelled repo, no access, or `gh` not signed in): a clear message in the terminal, the offending repo is skipped, the others still go through.
-- **In the page**: you can **filter the display by repo** (the chips at the top) and **switch the language FR/EN**. Nothing else - it's a report, not an interactive dashboard.
+- **In the page**: you can **filter the display by repo** (the chips at the top), **switch the language FR/EN** and **show rebase-only PRs** in Fixup (hidden by default, choice remembered). Nothing else - it's a report, not an interactive dashboard.
 - **The file is self-contained**: `dist/report.html` embeds everything (HTML + CSS + data). You can reopen it offline (`file://`) or send it as-is.
 - **Everyone sees their PRs**: the report uses your `gh` auth, so nobody shares a server or data.
 - Extra options: `--no-build` (skip the rebuild), `--no-open` (or `PRECAP_NO_OPEN=1`, don't open the browser).
