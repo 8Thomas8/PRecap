@@ -57,7 +57,7 @@ npm run report -- --repos acme/web 2026-06-10
 
 - **Le rapport est figé** : un jour déjà généré n'est pas recalculé (sauf `--force`). Pas besoin de re-générer un jour déjà fait.
 - **En cas de souci** (repo mal orthographié, sans accès, ou `gh` pas connecté) : message clair dans le terminal, le repo fautif est ignoré, les autres passent quand même.
-- **Dans la page** : tu peux **filtrer l'affichage par repo** (les puces en haut) et **changer la langue FR/EN**. Rien d'autre - c'est un rapport, pas un dashboard interactif.
+- **Dans la page** : tu peux **filtrer l'affichage par repo** (les puces en haut), **changer la langue FR/EN** et **afficher les PR juste rebasées** dans les fixups (masquées par défaut, choix mémorisé). Rien d'autre - c'est un rapport, pas un dashboard interactif.
 - **Le fichier est autonome** : `dist/report.html` embarque tout (HTML + CSS + données). Tu peux le rouvrir hors-ligne (`file://`) ou l'envoyer tel quel.
 - **Chacun voit ses PR** : le rapport utilise l'auth de ton `gh`, donc personne ne partage de serveur ni de données.
 - Options en plus : `--no-build` (saute le rebuild), `--no-open` (ou `PRECAP_NO_OPEN=1`, n'ouvre pas le navigateur).

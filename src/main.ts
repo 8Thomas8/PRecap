@@ -34,6 +34,9 @@ const selected = window.PR_DAY ?? latestActiveDay();
 let showTouched = false;
 const NOISE: Bucket = 'touched';
 
+const REBASES_KEY = 'precap:showRebases';
+let showRebases = localStorage.getItem(REBASES_KEY) === '1';
+
 // --- Display config ----------------------------------------------------------
 
 const BADGE: Record<string, string> = {
@@ -274,15 +277,25 @@ function timelineHtml(entries: Entry[]) {
 
 function sectionsHtml(entries: Entry[]) {
   return BUCKETS.filter(b => b.key !== NOISE || showTouched).map(b => {
-    const list = entries
-      .filter(p => p.bucket === b.key)
+    const all = entries.filter(p => p.bucket === b.key);
+    const rebases = b.key === 'fixup' ? all.filter(p => p.event === 'rebase').length : 0;
+    const list = all
+      .filter(p => showRebases || b.key !== 'fixup' || p.event !== 'rebase')
       .sort((a, b2) => b2.time.localeCompare(a.time));
-    if (!list.length) return '';
+    if (!all.length) return '';
     return `
       <section class="mb-9">
-        <h2 class="mb-3.5 flex items-center gap-2 text-[15px] font-semibold uppercase tracking-wider ${b.text}">
-          <span>${b.icon}</span> ${t(b.titleKey)} (${list.length})
-        </h2>
+        <div class="mb-3.5 flex flex-wrap items-center gap-2">
+          <h2 class="flex items-center gap-2 text-[15px] font-semibold uppercase tracking-wider ${b.text}">
+            <span>${b.icon}</span> ${t(b.titleKey)} (${list.length})
+          </h2>
+          ${rebases ? `<button data-toggle-rebases role="switch" aria-checked="${showRebases}"
+            class="ml-auto inline-flex cursor-pointer items-center gap-2 whitespace-nowrap text-[13px] text-zinc-400 transition-colors hover:text-zinc-200">
+            ${t('rebases.toggle', { n: rebases })}
+            <span class="relative h-5 w-9 shrink-0 rounded-full ${showRebases ? 'bg-sky-400' : 'bg-zinc-600'}">
+              <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white ${showRebases ? 'translate-x-4' : ''}"></span>
+            </span></button>` : ''}
+        </div>
         ${list.map(cardHtml).join('')}
       </section>`;
   }).join('');
@@ -364,6 +377,12 @@ function bindControls() {
     const target = e.target as HTMLElement;
     if (target.closest('[data-toggle-touched]')) {
       showTouched = !showTouched;
+      return render();
+    }
+    if (target.closest('[data-toggle-rebases]')) {
+      showRebases = !showRebases;
+      if (showRebases) localStorage.setItem(REBASES_KEY, '1');
+      else localStorage.removeItem(REBASES_KEY);
       return render();
     }
     const btn = target.closest<HTMLButtonElement>('[data-lang]');
